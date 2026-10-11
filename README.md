@@ -35,6 +35,8 @@ The app uses a service worker and browser storage for offline caching and eco po
 
 The Explore and dashboard map panels embed Google Maps centered near `11.0140672, 76.9683931` in Coimbatore. Maps need an internet connection; the live truck marker appears when the GPS backend has a current truck location. Use **Open in Google Maps** to launch the full map.
 
+Explore includes the composting/organic suppliers and e-waste services supplied for Coimbatore, plus Google Maps searches for CCMC MCCs, community bins, and environmental volunteer groups. **Use my GPS** requests browser permission on tap (GPS requires HTTPS or localhost) and uses the coordinates locally to sort entries. Distances are approximate straight-line estimates from locality-level pins; check each map/directions link for the exact entrance and road route. GPS coordinates are not saved or sent to Google until a user opens a map or directions link. Volunteering interest opens an email draft and is not an online NGO registration.
+
 ### Included prototype flows
 
 - Collection dashboard with route status, eco points, impact chart, and community board

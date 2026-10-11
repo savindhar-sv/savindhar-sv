@@ -20,6 +20,140 @@ let quizQuestion = 0;
 let quizScore = 0;
 let deferredInstallPrompt;
 let currentTruckLocation = null;
+let userCoordinates = null;
+
+const nearbyPlaces = [
+  {
+    name: "Dharani Recyclers",
+    kind: "E-waste",
+    category: "ewaste",
+    address: "No: 1A, Lala Mahal Road, PM Samy Colony, Gandhipuram, Coimbatore",
+    details: "Used electronics, computers, UPS units, and batteries · +91 91714 50039",
+    latitude: 11.0184,
+    longitude: 76.9668
+  },
+  {
+    name: "Techazar E-Cyclers Pvt. Ltd.",
+    kind: "E-waste",
+    category: "ewaste",
+    address: "No. 15, Mother India Industrial Estate, Seerapalayam Link Road, Malumichampatti",
+    details: "EPR-authorized e-waste management · R.S. Puram branch also listed",
+    latitude: 10.902,
+    longitude: 77.012
+  },
+  {
+    name: "Green Era Recyclers",
+    kind: "E-waste",
+    category: "ewaste",
+    address: "SF No. 91/1B, Sai Keerthi Industrial Estate, Bodipalayam, Seerapalayam",
+    details: "E-waste collection and IT asset disposition",
+    latitude: 10.944,
+    longitude: 76.91
+  },
+  {
+    name: "Cercle X",
+    kind: "E-waste & recycling",
+    category: "ewaste",
+    address: "Eachanari, Coimbatore",
+    details: "Waste management and recycling services · +91 96404 96454",
+    latitude: 10.963,
+    longitude: 77.014
+  },
+  {
+    name: "Green India Recyclers",
+    kind: "E-waste",
+    category: "ewaste",
+    address: "Kovilpalayam Road, Sulakkal Village, Kinathukadavu Taluk",
+    details: "Pollution-control-compliant e-waste disposal",
+    latitude: 10.83,
+    longitude: 77.08
+  },
+  {
+    name: "SS E-Waste Buyer / Pickmyscraps",
+    kind: "E-waste",
+    category: "ewaste",
+    address: "Kurichi Round Road, Sundarapuram / Madukkarai, Coimbatore",
+    details: "Doorstep pickup and exchange for cables, appliances, and scrap",
+    latitude: 10.947,
+    longitude: 76.966
+  },
+  {
+    name: "SS Vermicompost Sales Center",
+    kind: "Compost & organic supplies",
+    category: "compost",
+    address: "73, Duraisamy Nagar, Thottipalayam Pirivu, Goldwins",
+    details: "Vermicompost, neem cake, and organic agricultural inputs",
+    latitude: 11.053,
+    longitude: 77.039
+  },
+  {
+    name: "Future Organic System",
+    kind: "Compost & organic supplies",
+    category: "compost",
+    address: "Siddhapudur, Coimbatore",
+    details: "Organic gardening supplies and bulk vermicompost",
+    latitude: 11.023,
+    longitude: 76.969
+  },
+  {
+    name: "Nothing is Waste",
+    kind: "Composting service",
+    category: "compost",
+    address: "Kuniyamuthur, Coimbatore",
+    details: "Community composting and at-source composting systems",
+    latitude: 10.959,
+    longitude: 76.953
+  },
+  {
+    name: "Jeeva Eco Farm",
+    kind: "Organic farm & compost",
+    category: "compost",
+    address: "Solai Thottam, Pappampatti Pirivu, Trichy Road",
+    details: "Organic farm; contact the venue to confirm compost availability",
+    latitude: 10.958,
+    longitude: 77.08
+  },
+  {
+    name: "CCMC Micro Composting Centres",
+    kind: "Municipal composting",
+    category: "compost",
+    address: "Decentralized centres across Coimbatore; select the nearest centre on the map",
+    details: "CCMC decentralized wet-waste composting under the Smart Cities Mission · confirm each centre and accepted waste",
+    searchOnly: true
+  },
+  {
+    name: "Community bins & recycling points",
+    kind: "Community bins",
+    category: "bins",
+    address: "Coimbatore City Municipal Corporation area",
+    details: "Search current public bin locations near your position",
+    searchOnly: true
+  },
+  {
+    name: "Coimbatore Cares",
+    kind: "Community / NGO listing",
+    category: "ngo",
+    address: "Coimbatore; this name appears in the prototype and needs independent verification",
+    details: "Check the current organization, address, and volunteering programme on the map before joining",
+    searchOnly: true
+  },
+  {
+    name: "Green Coimbatore",
+    kind: "Environmental community group",
+    category: "ngo",
+    address: "Coimbatore; this name appears in the prototype and needs independent verification",
+    details: "Search for current local waste and environmental volunteer opportunities",
+    searchOnly: true
+  },
+  {
+    name: "Waste-management NGOs & environmental groups",
+    kind: "Volunteer opportunities",
+    category: "ngo",
+    address: "Coimbatore",
+    details: "Find current local groups and confirm their volunteer programmes directly",
+    searchOnly: true
+  }
+];
 
 function mercatorY(latitude) {
   const limitedLatitude = Math.max(-85.05112878, Math.min(85.05112878, latitude));
@@ -55,6 +189,162 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   const dLon = toRadians(lon2 - lon1);
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) ** 2;
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function nearbySearchUrl(place) {
+  const location = userCoordinates
+    ? `${userCoordinates.latitude},${userCoordinates.longitude}`
+    : `${mapCenter.latitude},${mapCenter.longitude}`;
+  const query = place.searchOnly
+    ? `${place.name} ${place.kind} near ${location}`
+    : `${place.name}, ${place.address}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+function nearbyDirectionsUrl(place) {
+  if (!userCoordinates || place.searchOnly) {
+    return "";
+  }
+  const origin = `${userCoordinates.latitude},${userCoordinates.longitude}`;
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(`${place.name}, ${place.address}`)}&travelmode=driving`;
+}
+
+function renderNearbyPlaces(category = "all") {
+  const list = document.querySelector("#nearby-place-results");
+  const count = document.querySelector("#nearby-place-count");
+  if (!list || !count) {
+    return;
+  }
+  const places = nearbyPlaces
+    .filter(place => category === "all" || place.category === category)
+    .map(place => ({
+      ...place,
+      distanceKm: userCoordinates && !place.searchOnly
+        ? haversineKm(userCoordinates.latitude, userCoordinates.longitude, place.latitude, place.longitude)
+        : null
+    }))
+    .sort((a, b) => {
+      if (a.distanceKm === null && b.distanceKm === null) return 0;
+      if (a.distanceKm === null) return 1;
+      if (b.distanceKm === null) return -1;
+      return a.distanceKm - b.distanceKm;
+    });
+
+  count.textContent = userCoordinates
+    ? `${places.filter(place => place.distanceKm !== null).length} places with approximate distances`
+    : `${places.length} places and local searches`;
+  list.replaceChildren();
+
+  places.forEach(place => {
+    const card = document.createElement("article");
+    card.className = "nearby-place";
+    const header = document.createElement("div");
+    header.className = "nearby-place-header";
+    const title = document.createElement("h3");
+    title.textContent = place.name;
+    const kind = document.createElement("span");
+    kind.className = "nearby-kind";
+    kind.textContent = place.kind;
+    header.append(title, kind);
+
+    const address = document.createElement("p");
+    address.textContent = place.address;
+    const details = document.createElement("p");
+    details.className = "nearby-details";
+    details.textContent = place.details;
+    const distance = document.createElement("p");
+    distance.className = "nearby-distance";
+    distance.textContent = place.distanceKm === null
+      ? (place.searchOnly ? "Exact centre/location varies; search nearby on the map." : "Use GPS to see an approximate distance.")
+      : `About ${place.distanceKm.toFixed(1)} km away in a straight line · area-level estimate`;
+
+    const actions = document.createElement("div");
+    actions.className = "nearby-actions";
+    const mapLink = document.createElement("a");
+    mapLink.className = "secondary-button";
+    mapLink.href = nearbySearchUrl(place);
+    mapLink.target = "_blank";
+    mapLink.rel = "noopener noreferrer";
+    mapLink.textContent = "View on map ↗";
+    actions.append(mapLink);
+
+    const directionsUrl = nearbyDirectionsUrl(place);
+    if (directionsUrl) {
+      const directions = document.createElement("a");
+      directions.className = "primary-button";
+      directions.href = directionsUrl;
+      directions.target = "_blank";
+      directions.rel = "noopener noreferrer";
+      directions.textContent = "Directions";
+      actions.append(directions);
+    }
+
+    if (place.category === "ngo") {
+      const joinLink = document.createElement("a");
+      joinLink.className = "nearby-join-link";
+      joinLink.href = `mailto:savindhar@manchesters.in?subject=${encodeURIComponent(`Volunteer with ${place.name}`)}&body=${encodeURIComponent("Hello, I would like information about joining a waste-management or environmental volunteer group in Coimbatore.")}`;
+      joinLink.textContent = "Ask about joining ↗";
+      actions.append(joinLink);
+    }
+
+    card.append(header, address, details, distance, actions);
+    list.append(card);
+  });
+}
+
+function initialiseNearbyDirectory() {
+  const placeList = document.querySelector(".place-list");
+  if (!placeList) {
+    return;
+  }
+  placeList.innerHTML = `
+    <div class="nearby-directory-heading">
+      <div><strong>Nearby waste &amp; reuse</strong><small id="nearby-place-count"></small></div>
+      <button class="primary-button" id="use-gps-button" type="button">Use my GPS</button>
+    </div>
+    <p class="nearby-privacy">GPS permission is requested only when tapped (GPS requires HTTPS or localhost). Coordinates are used in this browser; Google Maps receives them only if you open a map search or directions link.</p>
+    <label class="nearby-filter-label" for="nearby-category-filter">Show</label>
+    <select class="input nearby-filter" id="nearby-category-filter">
+      <option value="all">All nearby options</option>
+      <option value="compost">Compost hubs &amp; MCCs</option>
+      <option value="ewaste">E-waste recycling</option>
+      <option value="bins">Community bins</option>
+      <option value="ngo">NGOs &amp; volunteering</option>
+    </select>
+    <div class="nearby-distance-note">Approximate straight-line distances use the supplied address/locality, not a verified entrance pin. Use map/directions to confirm.</div>
+    <div class="nearby-place-results" id="nearby-place-results" aria-live="polite"></div>`;
+
+  const filter = document.querySelector("#nearby-category-filter");
+  filter.addEventListener("change", () => renderNearbyPlaces(filter.value));
+  document.querySelector("#use-gps-button").addEventListener("click", () => {
+    const status = document.querySelector("#nearby-place-count");
+    if (!navigator.geolocation) {
+      status.textContent = "This browser does not support GPS. Map searches are still available.";
+      return;
+    }
+    status.textContent = "Requesting location permission…";
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        userCoordinates = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        };
+        renderNearbyPlaces(filter.value);
+        status.textContent = `${nearbyPlaces.filter(place => !place.searchOnly).length} approximate distances · GPS active`;
+        notify("Your location was used to sort nearby options.");
+      },
+      error => {
+        const messages = {
+          1: "Location permission was denied. Allow it in your browser settings to sort by distance.",
+          2: "Your location is unavailable right now. Try again or use the map links.",
+          3: "Getting your location timed out. Try again."
+        };
+        status.textContent = messages[error.code] || "Could not get your location. Try again.";
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+    );
+  });
+  renderNearbyPlaces();
 }
 
 function setTruckStatus(truck) {
@@ -197,6 +487,7 @@ function showView(name, { updateHistory = false, scroll = true } = {}) {
   }
 
   views.forEach(view => view.classList.toggle("active-view", view === target));
+  updateTruckMarkers(currentTruckLocation);
   navItems.forEach(item => {
     const isCurrent = item.dataset.view === name;
     item.classList.toggle("active", isCurrent);
@@ -789,6 +1080,7 @@ window.addEventListener("appinstalled", () => {
   notify("BinGo installed successfully!");
 });
 
+initialiseNearbyDirectory();
 refreshTruckLocations();
 window.setInterval(refreshTruckLocations, 12000);
 window.addEventListener("resize", () => {

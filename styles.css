@@ -510,3 +510,140 @@ textarea:focus-visible {
 .dark-mode .settings-help {
   color: #9bd19c;
 }
+
+.nearby-directory-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.nearby-directory-heading strong,
+.nearby-directory-heading small {
+  display: block;
+}
+
+.nearby-directory-heading small,
+.nearby-privacy,
+.nearby-distance-note,
+.nearby-details {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.nearby-directory-heading small {
+  margin-top: 4px;
+}
+
+.nearby-directory-heading .primary-button {
+  flex: 0 0 auto;
+  padding: 10px 12px;
+  font-size: 11px;
+}
+
+.nearby-privacy {
+  margin: 0 0 12px;
+}
+
+.nearby-filter-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.nearby-filter {
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 10px;
+}
+
+.nearby-distance-note {
+  padding: 9px;
+  border-radius: 8px;
+  background: #f5f8f5;
+}
+
+.nearby-place-results {
+  display: grid;
+  gap: 10px;
+  max-height: 390px;
+  margin-top: 12px;
+  overflow-y: auto;
+}
+
+.nearby-place {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.nearby-place-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.nearby-place h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.nearby-kind {
+  flex: 0 0 auto;
+  padding: 4px 6px;
+  border-radius: 20px;
+  background: #eef7ee;
+  color: var(--green);
+  font-size: 9px;
+}
+
+.nearby-place > p {
+  margin: 7px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.nearby-place .nearby-details,
+.nearby-place .nearby-distance {
+  color: var(--muted);
+}
+
+.nearby-place .nearby-distance {
+  font-weight: 700;
+}
+
+.nearby-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.nearby-actions .primary-button,
+.nearby-actions .secondary-button {
+  padding: 8px 10px;
+  font-size: 10px;
+  text-decoration: none;
+}
+
+.nearby-join-link {
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dark-mode .nearby-distance-note,
+.dark-mode .nearby-kind {
+  background: #294333;
+}
+
+@media (max-width: 650px) {
+  .nearby-place-results {
+    max-height: 50vh;
+  }
+}
