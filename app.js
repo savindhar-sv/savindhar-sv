@@ -13,10 +13,6 @@ const shareGpsButton = document.getElementById("share-gps-button");
 const mapCenter = { latitude: 11.0140672, longitude: 76.9683931 };
 const mapZoom = 14;
 const truckId = "TN 37 AB 4812";
-const googleMapsKeyStorageKey = "bingo-google-maps-key";
-const mapInstances = new Map();
-const placeMarkers = new Map();
-const routeDistanceCache = new Map();
 
 let points = Number(window.localStorage.getItem(pointsKey)) || startingPoints;
 let toastTimeout;
@@ -25,15 +21,8 @@ let quizScore = 0;
 let deferredInstallPrompt;
 let currentTruckLocation = null;
 let userCoordinates = null;
-let selectedDestination = null;
-let mapsApiReady = false;
-let mapsApiLoading = false;
-let mapsPrepared = false;
-let distanceMatrixService = null;
-let geocoderService = null;
-let userMapMarkers = new Map();
-let mapsApiScriptPromise = null;
-let mapsApiKeyLoaded = "";
+
+window.localStorage.removeItem("bingo-google-maps-key");
 
 const nearbyPlaces = [
   {
@@ -42,6 +31,8 @@ const nearbyPlaces = [
     category: "ewaste",
     address: "No: 1A, Lala Mahal Road, PM Samy Colony, Gandhipuram, Coimbatore",
     details: "Used electronics, computers, UPS units, and batteries · +91 91714 50039",
+    latitude: 11.0184,
+    longitude: 76.9668
   },
   {
     name: "Techazar E-Cyclers Pvt. Ltd.",
@@ -49,6 +40,8 @@ const nearbyPlaces = [
     category: "ewaste",
     address: "No. 15, Mother India Industrial Estate, Seerapalayam Link Road, Malumichampatti",
     details: "EPR-authorized e-waste management · R.S. Puram branch also listed",
+    latitude: 10.902,
+    longitude: 77.012
   },
   {
     name: "Green Era Recyclers",
@@ -56,6 +49,8 @@ const nearbyPlaces = [
     category: "ewaste",
     address: "SF No. 91/1B, Sai Keerthi Industrial Estate, Bodipalayam, Seerapalayam",
     details: "E-waste collection and IT asset disposition",
+    latitude: 10.944,
+    longitude: 76.91
   },
   {
     name: "Cercle X",
@@ -63,6 +58,8 @@ const nearbyPlaces = [
     category: "ewaste",
     address: "Eachanari, Coimbatore",
     details: "Waste management and recycling services · +91 96404 96454",
+    latitude: 10.963,
+    longitude: 77.014
   },
   {
     name: "Green India Recyclers",
@@ -70,6 +67,8 @@ const nearbyPlaces = [
     category: "ewaste",
     address: "Kovilpalayam Road, Sulakkal Village, Kinathukadavu Taluk",
     details: "Pollution-control-compliant e-waste disposal",
+    latitude: 10.83,
+    longitude: 77.08
   },
   {
     name: "SS E-Waste Buyer / Pickmyscraps",
@@ -77,6 +76,8 @@ const nearbyPlaces = [
     category: "ewaste",
     address: "Kurichi Round Road, Sundarapuram / Madukkarai, Coimbatore",
     details: "Doorstep pickup and exchange for cables, appliances, and scrap",
+    latitude: 10.947,
+    longitude: 76.966
   },
   {
     name: "SS Vermicompost Sales Center",
@@ -84,6 +85,8 @@ const nearbyPlaces = [
     category: "compost",
     address: "73, Duraisamy Nagar, Thottipalayam Pirivu, Goldwins",
     details: "Vermicompost, neem cake, and organic agricultural inputs",
+    latitude: 11.053,
+    longitude: 77.039
   },
   {
     name: "Future Organic System",
@@ -91,6 +94,8 @@ const nearbyPlaces = [
     category: "compost",
     address: "Siddhapudur, Coimbatore",
     details: "Organic gardening supplies and bulk vermicompost",
+    latitude: 11.023,
+    longitude: 76.969
   },
   {
     name: "Nothing is Waste",
@@ -98,6 +103,8 @@ const nearbyPlaces = [
     category: "compost",
     address: "Kuniyamuthur, Coimbatore",
     details: "Community composting and at-source composting systems",
+    latitude: 10.959,
+    longitude: 76.953
   },
   {
     name: "Jeeva Eco Farm",
@@ -105,6 +112,8 @@ const nearbyPlaces = [
     category: "compost",
     address: "Solai Thottam, Pappampatti Pirivu, Trichy Road",
     details: "Organic farm; contact the venue to confirm compost availability",
+    latitude: 10.958,
+    longitude: 77.08
   },
   {
     name: "CCMC Micro Composting Centres",
@@ -161,18 +170,12 @@ function updateTruckMarkers(truck) {
       marker.hidden = true;
       return;
     }
-    const canvas = map.querySelector(".google-map-canvas");
-    const googleMap = canvas ? mapInstances.get(canvas.id) : null;
-    const center = googleMap?.getCenter();
-    const centerLatitude = center?.lat() ?? mapCenter.latitude;
-    const centerLongitude = center?.lng() ?? mapCenter.longitude;
-    const zoom = googleMap?.getZoom() ?? mapZoom;
-    const worldSize = 256 * 2 ** zoom;
-    let longitudeDelta = truck.longitude - centerLongitude;
+    const worldSize = 256 * 2 ** mapZoom;
+    let longitudeDelta = truck.longitude - mapCenter.longitude;
     if (longitudeDelta > 180) longitudeDelta -= 360;
     if (longitudeDelta < -180) longitudeDelta += 360;
     const horizontalOffset = (longitudeDelta / 360) * worldSize;
-    const verticalOffset = mercatorY(truck.latitude, zoom) - mercatorY(centerLatitude, zoom);
+    const verticalOffset = mercatorY(truck.latitude) - mercatorY(mapCenter.latitude);
     const left = 50 + (horizontalOffset / map.clientWidth) * 100;
     const top = 50 + (verticalOffset / map.clientHeight) * 100;
     marker.hidden = left < 2 || left > 98 || top < 2 || top > 98;
@@ -200,321 +203,8 @@ function nearbySearchUrl(place) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
-function currentOrigin() {
-  return userCoordinates ? new google.maps.LatLng(userCoordinates.latitude, userCoordinates.longitude) : null;
-}
-
-function destinationAddress(place) {
-  return `${place.name}, ${place.address}, Coimbatore, India`;
-}
-
-async function calculateRouteDistances() {
-  if (!mapsApiReady || !distanceMatrixService || !userCoordinates) {
-    return;
-  }
-  const destinations = nearbyPlaces.filter(place => !place.searchOnly);
-  const response = await distanceMatrixService.getDistanceMatrix({
-    origins: [currentOrigin()],
-    destinations: destinations.map(destinationAddress),
-    travelMode: google.maps.TravelMode.DRIVING,
-    unitSystem: google.maps.UnitSystem.METRIC
-  });
-  const elements = response.rows?.[0]?.elements || [];
-  destinations.forEach((place, index) => {
-    const result = elements[index];
-    routeDistanceCache.set(place.name, result?.status === "OK"
-      ? { text: result.distance.text, meters: result.distance.value, duration: result.duration.text, status: "OK" }
-      : { status: result?.status || "NOT_FOUND" });
-  });
-  renderNearbyPlaces(document.querySelector("#nearby-category-filter")?.value || "all");
-}
-
-function showMapsNotice(message) {
-  document.querySelectorAll(".map-key-notice").forEach(notice => {
-    notice.textContent = message;
-    notice.hidden = false;
-  });
-}
-
-function prepareMapCanvases() {
-  if (mapsPrepared) return;
-  mapsPrepared = true;
-  document.querySelectorAll(".map").forEach((mapElement, index) => {
-    const truckMarker = mapElement.querySelector(".live-truck-marker");
-    const canvas = document.createElement("div");
-    canvas.className = "google-map-canvas";
-    canvas.id = index === 0 ? "dashboard-map-canvas" : "explore-map-canvas";
-    canvas.setAttribute("role", "application");
-    canvas.setAttribute("aria-label", "Interactive Google Map");
-    mapElement.replaceChildren(canvas);
-    const notice = document.createElement("p");
-    notice.className = "map-key-notice";
-    notice.setAttribute("role", "status");
-    notice.hidden = true;
-    mapElement.append(notice);
-    if (truckMarker) {
-      mapElement.append(truckMarker);
-    }
-  });
-
-  const mapSearch = document.querySelector(".map-search");
-  if (mapSearch) {
-    mapSearch.replaceChildren();
-    const input = document.createElement("input");
-    input.className = "map-search-input";
-    input.id = "destination-search";
-    input.type = "search";
-    input.placeholder = "Search any destination";
-    input.setAttribute("aria-label", "Search a destination on the map");
-    mapSearch.append(input);
-  }
-
-  const exploreMap = document.querySelector("#explore-map-canvas");
-  if (exploreMap) {
-    const mapElement = exploreMap.closest(".map");
-    const aerialButton = document.createElement("button");
-    aerialButton.className = "map-layer-button";
-    aerialButton.type = "button";
-    aerialButton.textContent = "Aerial view";
-    aerialButton.addEventListener("click", showAerialView);
-    mapElement.append(aerialButton);
-  }
-}
-
-function addDirectoryMarker(place, location) {
-  if (!mapsApiReady) return;
-  document.querySelectorAll(".google-map-canvas").forEach(canvas => {
-    const map = mapInstances.get(canvas.id);
-    if (!map) return;
-    const key = `${canvas.id}:${place.name}`;
-    const existing = placeMarkers.get(key);
-    if (existing) {
-      existing.setPosition(location);
-      return;
-    }
-    const marker = new google.maps.Marker({
-      map,
-      position: location,
-      title: place.name
-    });
-    marker.addListener("click", () => {
-      map.panTo(location);
-      map.setZoom(16);
-      selectedDestination = { name: place.name, address: destinationAddress(place), location };
-    });
-    placeMarkers.set(key, marker);
-  });
-}
-
-function locatePlaceOnMap(place) {
-  if (!mapsApiReady || !geocoderService) {
-    showMapsNotice("Add a restricted Google Maps API key in Settings to search and map destinations.");
-    return;
-  }
-  geocoderService.geocode({ address: destinationAddress(place) })
-    .then(({ results }) => {
-      if (!results?.[0]?.geometry?.location) {
-        throw new Error("Google Maps could not find this address. Try the map search instead.");
-      }
-      const location = results[0].geometry.location;
-      selectedDestination = { name: place.name, address: destinationAddress(place), location };
-      addDirectoryMarker(place, location);
-      mapInstances.forEach(map => {
-        map.panTo(location);
-        map.setZoom(15);
-      });
-      updateDestinationDistance(location, place.name);
-    })
-    .catch(error => notify(error.message || "Could not locate this place on Google Maps."));
-}
-
-async function updateDestinationDistance(destination, label) {
-  if (!mapsApiReady || !userCoordinates || !distanceMatrixService) {
-    notify("Select Use my GPS to calculate a driving distance.");
-    return;
-  }
-  try {
-    const result = await distanceMatrixService.getDistanceMatrix({
-      origins: [currentOrigin()],
-      destinations: [destination],
-      travelMode: google.maps.TravelMode.DRIVING,
-      unitSystem: google.maps.UnitSystem.METRIC
-    });
-    const route = result.rows?.[0]?.elements?.[0];
-    if (route?.status !== "OK") {
-      throw new Error("Google Maps could not calculate a driving route for this destination.");
-    }
-    const status = document.querySelector("#nearby-place-count");
-    if (status) status.textContent = `${label}: ${route.distance.text} driving · ${route.duration.text}`;
-  } catch (error) {
-    notify(error.message || "Driving distance could not be calculated.");
-  }
-}
-
-function initializeDestinationAutocomplete() {
-  const input = document.querySelector("#destination-search");
-  if (!input || !google.maps.places?.Autocomplete) return;
-  const autocomplete = new google.maps.places.Autocomplete(input, {
-    fields: ["formatted_address", "geometry", "name"],
-    componentRestrictions: { country: "in" },
-    bounds: new google.maps.LatLngBounds(
-      { lat: mapCenter.latitude - 0.3, lng: mapCenter.longitude - 0.3 },
-      { lat: mapCenter.latitude + 0.3, lng: mapCenter.longitude + 0.3 }
-    ),
-    strictBounds: false
-  });
-  autocomplete.addListener("place_changed", () => {
-    const place = autocomplete.getPlace();
-    const location = place.geometry?.location;
-    if (!location) {
-      notify("Choose a suggested place with an address.");
-      return;
-    }
-    selectedDestination = {
-      name: place.name || place.formatted_address || "Selected destination",
-      address: place.formatted_address || place.name || "Selected destination",
-      location
-    };
-    mapInstances.forEach(map => {
-      map.panTo(location);
-      map.setZoom(16);
-    });
-    document.querySelectorAll(".google-map-canvas").forEach(canvas => {
-      const map = mapInstances.get(canvas.id);
-      if (!map) return;
-      new google.maps.Marker({ map, position: location, title: selectedDestination.name });
-    });
-    updateDestinationDistance(location, selectedDestination.name);
-  });
-}
-
-function loadGoogleMapsApi(apiKey) {
-  if (mapsApiReady) {
-    return Promise.resolve();
-  }
-  if (mapsApiScriptPromise) return mapsApiScriptPromise;
-  mapsApiLoading = true;
-  mapsApiScriptPromise = new Promise((resolve, reject) => {
-    const callbackName = `bingoGoogleMapsLoaded${Date.now()}`;
-    window[callbackName] = async () => {
-      try {
-        const { Map } = await google.maps.importLibrary("maps");
-        await google.maps.importLibrary("places");
-        distanceMatrixService = new google.maps.DistanceMatrixService();
-        geocoderService = new google.maps.Geocoder();
-        document.querySelectorAll(".google-map-canvas").forEach(canvas => {
-          const map = new Map(canvas, {
-            center: mapCenter,
-            zoom: mapZoom,
-            mapTypeControl: true,
-            streetViewControl: false,
-            fullscreenControl: true
-          });
-          mapInstances.set(canvas.id, map);
-          map.addListener("idle", () => updateTruckMarkers(currentTruckLocation));
-        });
-        mapsApiReady = true;
-        mapsApiLoading = false;
-        mapsApiKeyLoaded = apiKey;
-        initializeDestinationAutocomplete();
-        if (userCoordinates) {
-          addUserLocationMarkers();
-          await calculateRouteDistances();
-        }
-        document.querySelectorAll(".map-key-notice").forEach(notice => notice.remove());
-        resolve();
-      } catch (error) {
-        mapsApiLoading = false;
-        mapsApiScriptPromise = null;
-        reject(error);
-      }
-    };
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&loading=async&libraries=places&callback=${callbackName}&v=weekly`;
-    script.async = true;
-    script.onerror = () => {
-      mapsApiLoading = false;
-      mapsApiScriptPromise = null;
-      reject(new Error("Google Maps failed to load. Check the API key, billing, enabled APIs, and website restrictions."));
-    };
-    document.head.append(script);
-  });
-  return mapsApiScriptPromise;
-}
-
-function initializeGoogleMaps() {
-  prepareMapCanvases();
-  const apiKey = window.localStorage.getItem(googleMapsKeyStorageKey)?.trim();
-  if (!apiKey) {
-    showMapsNotice("Add a restricted Google Maps API key in Settings to enable interactive maps, place search, and driving distances.");
-    return;
-  }
-  if (mapsApiReady && apiKey !== mapsApiKeyLoaded) {
-    showMapsNotice("Google Maps is already loaded with the previous key. Reload this page to apply the changed key.");
-    return;
-  }
-  if (mapsApiLoading) return;
-  loadGoogleMapsApi(apiKey).catch(error => {
-    showMapsNotice(error.message);
-    console.error("Google Maps initialization failed:", error);
-  });
-}
-
-function addUserLocationMarkers() {
-  if (!mapsApiReady) return;
-  const position = new google.maps.LatLng(userCoordinates.latitude, userCoordinates.longitude);
-  mapInstances.forEach((map, mapId) => {
-    const marker = userMapMarkers.get(mapId);
-    if (marker) {
-      marker.setPosition(position);
-    } else {
-      userMapMarkers.set(mapId, new google.maps.Marker({
-        map,
-        position,
-        title: "Your current location",
-        label: "You"
-      }));
-    }
-    map.panTo(position);
-  });
-}
-
-async function showAerialView() {
-  const apiKey = window.localStorage.getItem(googleMapsKeyStorageKey)?.trim();
-  if (!apiKey) {
-    showMapsNotice("Add a restricted Google Maps API key in Settings to use Aerial View.");
-    return;
-  }
-  const address = selectedDestination?.address ||
-    (userCoordinates ? `${userCoordinates.latitude},${userCoordinates.longitude}` : "RS Puram, Coimbatore, Tamil Nadu, India");
-  openDialog("Google Aerial View", `Aerial video for ${address}. Availability depends on Google coverage and video processing.`, `
-    <p id="aerial-view-status" role="status">Checking Aerial View availability…</p>
-    <video id="aerial-view-video" class="aerial-view-media" muted autoplay loop controls playsinline hidden></video>`);
-  try {
-    const params = new URLSearchParams({ address, key: apiKey });
-    const response = await fetch(`https://aerialview.googleapis.com/v1/videos:lookupVideo?${params}`);
-    const result = await response.json();
-    if (!dialog.open) return;
-    const status = document.querySelector("#aerial-view-status");
-    const video = document.querySelector("#aerial-view-video");
-    if (result.state === "PROCESSING") {
-      status.textContent = "Aerial video is still processing. Try again later.";
-    } else if (!response.ok || result.error || !result.uris?.MP4_MEDIUM?.landscapeUri) {
-      status.textContent = result.error?.message || "Aerial View video is unavailable for this location.";
-    } else {
-      video.src = result.uris.MP4_MEDIUM.landscapeUri;
-      video.hidden = false;
-      status.textContent = "";
-    }
-  } catch (error) {
-    const status = document.querySelector("#aerial-view-status");
-    if (status) status.textContent = "Could not reach the Aerial View service. Check the API key and try again.";
-    console.error("Aerial View lookup failed:", error);
-  }
-}
-
 function nearbyDirectionsUrl(place) {
-  if (!userCoordinates || place.searchOnly || !mapsApiReady) {
+  if (!userCoordinates || place.searchOnly) {
     return "";
   }
   const origin = `${userCoordinates.latitude},${userCoordinates.longitude}`;
@@ -531,18 +221,20 @@ function renderNearbyPlaces(category = "all") {
     .filter(place => category === "all" || place.category === category)
     .map(place => ({
       ...place,
-      route: routeDistanceCache.get(place.name) || null
+      distanceKm: userCoordinates && !place.searchOnly
+        ? haversineKm(userCoordinates.latitude, userCoordinates.longitude, place.latitude, place.longitude)
+        : null
     }))
     .sort((a, b) => {
-      if (!a.route?.meters && !b.route?.meters) return 0;
-      if (!a.route?.meters) return 1;
-      if (!b.route?.meters) return -1;
-      return a.route.meters - b.route.meters;
+      if (a.distanceKm === null && b.distanceKm === null) return 0;
+      if (a.distanceKm === null) return 1;
+      if (b.distanceKm === null) return -1;
+      return a.distanceKm - b.distanceKm;
     });
 
-  count.textContent = userCoordinates && mapsApiReady
-    ? `${places.filter(place => place.route?.meters).length} driving routes calculated`
-    : `${places.length} places and map searches`;
+  count.textContent = userCoordinates
+    ? `${places.filter(place => place.distanceKm !== null).length} places with approximate distances`
+    : `${places.length} places and local searches`;
   list.replaceChildren();
 
   places.forEach(place => {
@@ -564,17 +256,9 @@ function renderNearbyPlaces(category = "all") {
     details.textContent = place.details;
     const distance = document.createElement("p");
     distance.className = "nearby-distance";
-    distance.textContent = place.route?.status === "OK"
-      ? `${place.route.text} driving · ${place.route.duration} by road`
-      : place.searchOnly
-        ? "Exact centre/location varies; search nearby on the map."
-        : place.route?.status
-          ? "No driving route returned for this address."
-          : userCoordinates
-            ? mapsApiReady
-              ? "Calculating driving distance…"
-              : "Add a Google Maps API key in Settings to calculate road distance."
-            : "Use GPS and a Maps API key to calculate driving distance.";
+    distance.textContent = place.distanceKm === null
+      ? (place.searchOnly ? "Exact centre/location varies; search nearby on the map." : "Use GPS to see an approximate distance.")
+      : `About ${place.distanceKm.toFixed(1)} km away in a straight line · area-level estimate`;
 
     const actions = document.createElement("div");
     actions.className = "nearby-actions";
@@ -585,15 +269,6 @@ function renderNearbyPlaces(category = "all") {
     mapLink.rel = "noopener noreferrer";
     mapLink.textContent = "View on map ↗";
     actions.append(mapLink);
-
-    if (!place.searchOnly) {
-      const pinButton = document.createElement("button");
-      pinButton.className = "secondary-button";
-      pinButton.type = "button";
-      pinButton.textContent = "Show on map";
-      pinButton.addEventListener("click", () => locatePlaceOnMap(place));
-      actions.append(pinButton);
-    }
 
     const directionsUrl = nearbyDirectionsUrl(place);
     if (directionsUrl) {
@@ -629,7 +304,7 @@ function initialiseNearbyDirectory() {
       <div><strong>Nearby waste &amp; reuse</strong><small id="nearby-place-count"></small></div>
       <button class="primary-button" id="use-gps-button" type="button">Use my GPS</button>
     </div>
-    <p class="nearby-privacy">GPS permission is requested only when tapped (GPS requires HTTPS or localhost). Coordinates are used in this browser for Maps driving-distance calculations; Google receives them only when Maps features are used.</p>
+    <p class="nearby-privacy">Your GPS location stays in this browser unless you choose Directions. The embedded map uses a fixed Coimbatore centre.</p>
     <label class="nearby-filter-label" for="nearby-category-filter">Show</label>
     <select class="input nearby-filter" id="nearby-category-filter">
       <option value="all">All nearby options</option>
@@ -656,19 +331,9 @@ function initialiseNearbyDirectory() {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude
         };
-        routeDistanceCache.clear();
-        addUserLocationMarkers();
         renderNearbyPlaces(filter.value);
-        if (mapsApiReady) {
-          calculateRouteDistances().catch(error => {
-            console.error("Driving distance calculation failed:", error);
-            status.textContent = "Could not calculate driving distances. Check Distance Matrix API access.";
-          });
-        } else {
-          status.textContent = "GPS captured in this browser. Add a Maps API key in Settings for driving distances.";
-        }
-        initializeGoogleMaps();
-        notify("Your location is ready for nearby search.");
+        status.textContent = `${nearbyPlaces.filter(place => !place.searchOnly).length} approximate distances · GPS active`;
+        notify("Your location was used to sort nearby options.");
       },
       error => {
         const messages = {
@@ -1052,11 +717,6 @@ function openSettings() {
       <label class="setting-toggle"><span><strong>Notifications</strong><small>Show in-app updates and confirmations</small></span>
         <input name="notifications" type="checkbox">
       </label>
-      <p class="settings-section-title">Google Maps</p>
-      <label>Restricted Google Maps API key
-        <input class="input" name="googleMapsApiKey" type="password" autocomplete="off" placeholder="Optional · enter your browser-restricted key">
-        <small>Enable Maps JavaScript API, Places, Distance Matrix, and Aerial View. Restrict the key by website and API.</small>
-      </label>
       <button class="primary-button" type="submit">Save settings</button>
       <div class="settings-actions">
         <button class="secondary-button" id="activity-settings-button" type="button">View your activity</button>
@@ -1070,7 +730,6 @@ function openSettings() {
       : "system";
     form.elements.neighborhood.value = preferences.neighborhood || defaultPreferences.neighborhood;
     form.elements.notifications.checked = preferences.notifications !== false;
-    form.elements.googleMapsApiKey.value = window.localStorage.getItem(googleMapsKeyStorageKey) || "";
     form.addEventListener("submit", event => {
       event.preventDefault();
       const formData = new FormData(form);
@@ -1088,18 +747,11 @@ function openSettings() {
         notifications: form.elements.notifications.checked,
         neighborhood: form.elements.neighborhood.value
       };
-      const apiKey = String(form.elements.googleMapsApiKey.value || "").trim();
-      if (apiKey) {
-        window.localStorage.setItem(googleMapsKeyStorageKey, apiKey);
-      } else {
-        window.localStorage.removeItem(googleMapsKeyStorageKey);
-      }
       window.localStorage.setItem(profileKey, JSON.stringify(profile));
       savePreferences();
       renderProfile();
       dialog.close();
       notify("Settings saved.");
-      initialiseGoogleMaps();
     });
     dialog.querySelector("#activity-settings-button").addEventListener("click", () => {
       dialog.close();
@@ -1114,9 +766,6 @@ function openSettings() {
       points = startingPoints;
       window.localStorage.removeItem(profileKey);
       window.localStorage.removeItem(preferencesKey);
-      window.localStorage.removeItem(googleMapsKeyStorageKey);
-      mapsApiReady = false;
-      mapsApiScriptPromise = null;
       updatePoints(0);
       renderProfile();
       savePreferences();
@@ -1434,7 +1083,6 @@ window.addEventListener("appinstalled", () => {
 });
 
 initialiseNearbyDirectory();
-initializeGoogleMaps();
 refreshTruckLocations();
 window.setInterval(refreshTruckLocations, 12000);
 window.addEventListener("resize", () => {

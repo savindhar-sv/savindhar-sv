@@ -33,9 +33,9 @@ On a supported browser, choose **Install app** to add BinGo to your device. On i
 
 The app uses a service worker and browser storage for offline caching and eco points. Clear the site's storage in your browser settings to reset its locally saved points.
 
-The Explore and dashboard panels use the Google Maps JavaScript API, centered initially near `11.0140672, 76.9683931` in Coimbatore. Configure a browser API key in **Settings → Google Maps** to enable interactive maps, place autocomplete, route distances, and the optional Aerial View lookup. The key is stored in this browser and is visible to users of this client-side app; restrict it by website referrer and enabled API in Google Cloud. Enable Maps JavaScript API, Places API, Distance Matrix API, and Aerial View API as needed. Maps need an internet connection; the live truck marker appears when the GPS backend has a current truck location.
+The Explore and dashboard panels use embedded Google Maps centered near `11.0140672, 76.9683931` in Coimbatore. Opening the map itself requires an internet connection. The live truck marker appears when the GPS backend has a current truck location.
 
-Explore includes the composting/organic suppliers and e-waste services supplied for Coimbatore, plus Google Maps searches for CCMC MCCs, community bins, and environmental volunteer groups. **Use my GPS** requests browser permission on tap (GPS requires HTTPS or localhost). With a configured Google Maps key it calculates driving distances from the user's location; coordinates are sent to Google Maps to provide that service. Aerial View is an optional Google service and only works for locations with available video. Volunteering interest opens an email draft and is not an online NGO registration.
+Explore includes the composting/organic suppliers and e-waste services supplied for Coimbatore, plus Google Maps searches for CCMC MCCs, community bins, and environmental volunteer groups. **Use my GPS** requests browser permission only after the user taps it (GPS requires HTTPS or localhost). Nearby distances are approximate straight-line estimates based on the available locality-level coordinates; Google Maps directions links can be opened for routing. Volunteering interest opens an email draft and is not an online NGO registration.
 
 ### Included prototype flows
 
@@ -47,4 +47,4 @@ Explore includes the composting/organic suppliers and e-waste services supplied 
 - Filterable donation listings, item requests, and a working item-sharing form
 - Animated sorting lessons with quiz feedback and eco-point rewards
 
-The prototype uses mock collection, map, community, and admin data intentionally. Its report photo, donations, and eco-point balance are local prototype interactions, not cloud-synchronised. For production deployment, connect Firebase Authentication, Firestore, Storage, Cloud Messaging, Google Maps, AI classification, and the admin application.
+The prototype uses mock collection, map, community, and admin data intentionally. Its report photo, donations, and eco-point balance are local prototype interactions, not cloud-synchronised. For production deployment, connect cloud authentication and storage, notifications, map services, AI classification, and the admin application.
