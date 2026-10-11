@@ -35,8 +35,12 @@
         <button class="nav-item" data-view="admin"><span>▦</span> Admin console</button>
       </nav>
       <div class="sidebar-bottom">
-        <div class="mini-profile"><div class="avatar">AK</div><div><strong>Ananya Krishnan</strong><small>1,240 eco points</small></div><span>•••</span></div>
-        <button class="nav-item"><span>⚙</span> Settings</button>
+        <button class="mini-profile profile-button" id="sidebar-profile-button" type="button" aria-label="Open profile settings">
+          <span class="avatar profile-initials">AK</span>
+          <span class="profile-summary"><strong class="profile-name">Ananya Krishnan</strong><small><span class="profile-points">1,240</span> eco points</small></span>
+          <span class="profile-more" aria-hidden="true">•••</span>
+        </button>
+        <button class="nav-item" id="settings-button" type="button"><span>⚙</span> Settings</button>
         <div class="help-card"><span class="help-icon">?</span><div><strong>Need help?</strong><small>We’re here for you</small></div></div>
       </div>
     </aside>
@@ -45,11 +49,11 @@
       <header class="topbar">
         <button class="mobile-menu" aria-label="Open menu" aria-expanded="false" aria-controls="app-sidebar">☰</button>
         <div class="mobile-brand">bin<span>go</span></div>
-        <div class="topbar-actions"><button class="install-button" hidden>Install app</button><button class="icon-button notification-button" aria-label="Notifications">♧<i></i></button><button class="avatar small" aria-label="Ananya Krishnan">AK</button></div>
+        <div class="topbar-actions"><button class="install-button" hidden>Install app</button><button class="icon-button notification-button" aria-label="Notifications">♧<i></i></button><button class="avatar small profile-button profile-initials" id="header-profile-button" type="button" aria-label="Open profile settings">AK</button></div>
       </header>
 
       <div id="view-home" class="view active-view">
-        <section class="welcome-row"><div><p class="eyebrow" id="today-date"></p><h1>Good morning, Ananya <span>✳</span></h1><p class="muted">Small actions make a cleaner Coimbatore.</p></div><div class="points-pill"><span>♢</span><div><small>YOUR ECO POINTS</small><strong><span class="points-total">1,240</span> <em>↗ 12%</em></strong></div></div></section>
+        <section class="welcome-row"><div><p class="eyebrow" id="today-date"></p><h1>Good morning, <span class="greeting-name">Ananya</span> <span>✳</span></h1><p class="muted">Small actions make a cleaner Coimbatore.</p></div><div class="points-pill"><span>♢</span><div><small>YOUR ECO POINTS</small><strong><span class="points-total">1,240</span> <em>↗ 12%</em></strong></div></div></section>
         <section class="hero-grid">
           <article class="collection-card card"><div class="card-heading"><div><p class="eyebrow">TODAY’S COLLECTION</p><h2>Wet waste day</h2></div><span class="status-badge live"><i></i> On schedule</span></div><div class="collection-main"><div class="bin-illustration"><div class="bin-lid"></div><div class="bin-body"><span>♻</span></div></div><div class="arrival"><p class="muted">Next pick-up in</p><strong>18 <small>min</small></strong><p class="muted">around 08:30 AM</p></div></div><div class="progress-label"><span>Route progress</span><strong>12 of 28 stops</strong></div><div class="progress"><span style="width:42%"></span></div><button class="text-button" data-view="explore">Track collection truck <span>→</span></button></article>
           <article class="map-card card"><div class="map-top"><div><p class="eyebrow">LIVE NEAR YOU</p><h2>Collection in progress</h2></div><button class="round-button" id="share-gps-button" type="button">↗</button></div><div class="map map-live"><div class="map-lines"></div><span class="map-road r1"></span><span class="map-road r2"></span><span class="map-road r3"></span><div class="map-label label-a">RS Puram</div><div class="map-label label-b">Saibaba Colony</div><div class="truck-marker" id="live-truck-marker" aria-label="Live truck position">▰</div><div class="home-marker">●</div><div class="map-zoom"><button type="button">+</button><button type="button">−</button></div></div><div class="map-footer"><span class="truck-dot"></span><span class="truck-status-copy">Truck <strong>TN 37 AB 4812</strong> · connecting…</span><button class="arrow-button" data-view="explore" type="button">→</button></div></article>

@@ -260,3 +260,97 @@ textarea:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+.profile-button {
+  cursor: pointer;
+}
+
+.mini-profile.profile-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.mini-profile.profile-button:hover,
+.mini-profile.profile-button:focus-visible {
+  background: #f4f8f4;
+  border-radius: 10px;
+}
+
+.profile-summary {
+  min-width: 0;
+  flex: 1;
+}
+
+.profile-summary strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setting-toggle {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px !important;
+}
+
+.setting-toggle strong,
+.setting-toggle small {
+  display: block;
+}
+
+.setting-toggle small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.setting-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green);
+}
+
+.dark-mode {
+  --ink: #e6eee8;
+  --muted: #a4b6ac;
+  --line: #34483c;
+  --bg: #14231c;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.dark-mode .sidebar,
+.dark-mode .card,
+.dark-mode .points-pill,
+.dark-mode .app-dialog {
+  background: #1c3026;
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.dark-mode .location-pill,
+.dark-mode .nav-item.active,
+.dark-mode .mobile-nav-item.active,
+.dark-mode .dialog-close,
+.dark-mode .quiz-option {
+  background: #294333;
+  color: var(--ink);
+}
+
+.dark-mode .dialog-form .input,
+.dark-mode .dialog-form textarea,
+.dark-mode .quiz-option {
+  background: #14231c;
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.dark-mode .mini-profile.profile-button:hover,
+.dark-mode .mini-profile.profile-button:focus-visible {
+  background: #294333;
+}

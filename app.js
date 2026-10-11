@@ -148,7 +148,7 @@ function updatePoints(amount) {
   pointDisplays.forEach(display => {
     display.textContent = points.toLocaleString("en-IN");
   });
-  document.querySelector(".mini-profile small").textContent = `${points.toLocaleString("en-IN")} eco points`;
+  document.querySelector(".profile-points").textContent = points.toLocaleString("en-IN");
   const levelPoints = 1500;
   const pointsRemaining = Math.max(0, levelPoints - points);
   document.querySelector(".level-progress > .progress span").style.width =
@@ -239,6 +239,9 @@ document.getElementById("broadcast-update-button")?.addEventListener("click", ()
 });
 
 function notify(message) {
+  if (preferences?.notifications === false) {
+    return;
+  }
   toast.textContent = message;
   toast.classList.add("show");
   window.clearTimeout(toastTimeout);
@@ -282,6 +285,136 @@ function openDialog(title, description, content, onOpen) {
   dialog.showModal();
   onOpen?.();
 }
+
+const profileKey = "bingo-profile";
+const preferencesKey = "bingo-preferences";
+const defaultProfile = { name: "Ananya Krishnan", email: "" };
+const defaultPreferences = { appearance: "light", notifications: true };
+
+function readStoredObject(key, fallback) {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) || "null");
+    return value && typeof value === "object" && !Array.isArray(value) ? { ...fallback, ...value } : fallback;
+  } catch (error) {
+    console.warn(`Unable to read ${key} from local storage:`, error);
+    return fallback;
+  }
+}
+
+let profile = readStoredObject(profileKey, defaultProfile);
+let preferences = readStoredObject(preferencesKey, defaultPreferences);
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;"
+  })[character]);
+}
+
+function getInitials(name) {
+  return name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase() || "U";
+}
+
+function renderProfile() {
+  const name = profile.name || defaultProfile.name;
+  document.querySelectorAll(".profile-name").forEach(element => {
+    element.textContent = name;
+  });
+  const greetingName = document.querySelector(".greeting-name");
+  if (greetingName) {
+    greetingName.textContent = name.split(/\s+/)[0];
+  }
+  document.querySelectorAll(".profile-initials").forEach(element => {
+    element.textContent = getInitials(name);
+  });
+  document.querySelectorAll(".profile-button").forEach(button => {
+    button.setAttribute("aria-label", `Open profile settings for ${name}`);
+  });
+}
+
+function savePreferences() {
+  window.localStorage.setItem(preferencesKey, JSON.stringify(preferences));
+  document.body.classList.toggle("dark-mode", preferences.appearance === "dark");
+  document.documentElement.dataset.appearance = preferences.appearance;
+}
+
+function openProfileSettings() {
+  openDialog("Your profile", "Update the name and email saved on this device.", `
+    <form class="dialog-form" id="profile-form">
+      <label>Display name<input class="input" name="name" required maxlength="60" value="${escapeHtml(profile.name || defaultProfile.name)}"></label>
+      <label>Email address<input class="input" name="email" type="email" maxlength="254" value="${escapeHtml(profile.email || "")}" placeholder="you@example.com"></label>
+      <button class="primary-button" type="submit">Save profile</button>
+    </form>`, () => {
+    const form = dialog.querySelector("#profile-form");
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      const formData = new FormData(form);
+      profile = {
+        name: String(formData.get("name") || "").trim(),
+        email: String(formData.get("email") || "").trim()
+      };
+      if (!profile.name) {
+        form.elements.name.reportValidity();
+        return;
+      }
+      window.localStorage.setItem(profileKey, JSON.stringify(profile));
+      renderProfile();
+      dialog.close();
+      notify("Profile saved on this device.");
+    });
+  });
+}
+
+function openSettings() {
+  openDialog("Settings", "Choose how BinGo behaves on this device.", `
+    <form class="dialog-form" id="settings-form">
+      <label>Appearance
+        <select class="input" name="appearance">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
+      <label class="setting-toggle"><span><strong>Notifications</strong><small>Show in-app updates and confirmations</small></span>
+        <input name="notifications" type="checkbox">
+      </label>
+      <button class="primary-button" type="submit">Save settings</button>
+      <button class="secondary-button" id="reset-points-button" type="button">Reset eco points</button>
+    </form>`, () => {
+    const form = dialog.querySelector("#settings-form");
+    form.elements.appearance.value = preferences.appearance === "dark" ? "dark" : "light";
+    form.elements.notifications.checked = preferences.notifications !== false;
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      preferences = {
+        appearance: form.elements.appearance.value,
+        notifications: form.elements.notifications.checked
+      };
+      savePreferences();
+      dialog.close();
+      notify("Settings saved.");
+    });
+    dialog.querySelector("#reset-points-button").addEventListener("click", () => {
+      if (!window.confirm("Reset your eco points to the starting balance?")) {
+        return;
+      }
+      points = startingPoints;
+      window.localStorage.setItem(pointsKey, String(points));
+      updatePoints(0);
+      dialog.close();
+      notify("Eco points reset to the starting balance.");
+    });
+  });
+}
+
+document.querySelectorAll(".profile-button").forEach(button => {
+  button.addEventListener("click", openProfileSettings);
+});
+document.querySelector("#settings-button").addEventListener("click", openSettings);
+renderProfile();
+savePreferences();
 
 function createDonationCard({ title, category, description, owner = "You", distance = "Nearby" }) {
   const card = document.createElement("article");
