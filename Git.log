@@ -1,0 +1,356 @@
+2026-10-10 20:47:55.600 [info] [main] Log level: Info
+2026-10-10 20:47:55.600 [info] [main] Validating found git in: "/usr/bin/git"
+2026-10-10 20:47:55.625 [info] [main] Using git "2.54.0 (Apple Git-157)" from "/usr/bin/git"
+2026-10-10 20:47:55.625 [info] [Model][doInitialScan] Initial repository scan started
+2026-10-10 20:47:55.660 [info] > git rev-parse --show-toplevel [32ms]
+2026-10-10 20:47:55.681 [info] > git rev-parse --git-dir --git-common-dir --show-superproject-working-tree [19ms]
+2026-10-10 20:47:55.687 [info] [Model][openRepository] Opened repository (path): /Users/savindhar/VS code
+2026-10-10 20:47:55.688 [info] [Model][openRepository] Opened repository (real path): /Users/savindhar/VS code
+2026-10-10 20:47:55.688 [info] [Model][openRepository] Opened repository (kind): repository
+2026-10-10 20:47:55.690 [info] [Model][doInitialScan] Initial repository scan completed - repositories (1), closed repositories (0), parent repositories (0), unsafe repositories (0)
+2026-10-10 20:47:55.693 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:47:55.701 [info] > git config --get --local core.virtualfilesystem [12ms]
+2026-10-10 20:47:55.701 [warning] [Git][config] git config failed: Failed to execute git
+2026-10-10 20:47:55.702 [info] > git config --get commit.template [12ms]
+2026-10-10 20:47:55.704 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [12ms]
+2026-10-10 20:47:55.705 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:47:55.718 [info] > git status -z -uall [12ms]
+2026-10-10 20:47:55.719 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [13ms]
+2026-10-10 20:47:55.727 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:47:55.736 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [13ms]
+2026-10-10 20:47:55.736 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:47:55.736 [error] [GitHistoryProvider][resolveHEADMergeBase] Failed to resolve merge base for main: Error: No such branch: main.
+2026-10-10 20:47:55.737 [info] > git config --get commit.template [12ms]
+2026-10-10 20:47:55.739 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [12ms]
+2026-10-10 20:47:55.739 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:47:55.752 [info] > git status -z -uall [13ms]
+2026-10-10 20:47:55.752 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [12ms]
+2026-10-10 20:47:57.289 [info] > git config --get commit.template [25ms]
+2026-10-10 20:47:57.301 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:47:57.315 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [14ms]
+2026-10-10 20:47:57.315 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:47:57.328 [info] > git status -z -uall [12ms]
+2026-10-10 20:47:57.328 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [12ms]
+2026-10-10 20:47:58.101 [info] > git -c i18n.logOutputEncoding=UTF-8 log --format=%H%n%aN%n%aE%n%at%n%ct%n%P%n%D%n%B -z --shortstat --diff-merges=first-parent -n50 --skip=0 --topo-order --decorate=full --stdin [13ms]
+2026-10-10 20:47:58.101 [info] fatal: bad revision 'refs/heads/main'
+2026-10-10 20:47:58.101 [error] [GitHistoryProvider][provideHistoryItems] Failed to get history items with options '{"historyItemRefs":["refs/heads/main"],"limit":50,"skip":0}': Failed to execute git {
+  "exitCode": 128,
+  "gitCommand": "-c",
+  "stdout": "",
+  "stderr": "fatal: bad revision 'refs/heads/main'\n"
+}
+2026-10-10 20:47:58.649 [info] > git check-ignore -v -z --stdin [12ms]
+2026-10-10 20:48:01.022 [info] > git check-ignore -v -z --stdin [18ms]
+2026-10-10 20:48:17.929 [info] > git check-ignore -v -z --stdin [66ms]
+2026-10-10 20:48:17.966 [info] > git show --textconv HEAD:README.md [31ms]
+2026-10-10 20:48:17.968 [info] > git ls-tree -l HEAD -- README.md [29ms]
+2026-10-10 20:48:17.968 [info] fatal: Not a valid object name HEAD
+2026-10-10 20:48:17.969 [info] > git ls-files --stage -- README.md [32ms]
+2026-10-10 20:48:17.970 [info] > git show --textconv :README.md [36ms]
+2026-10-10 20:48:18.041 [info] > git cat-file -s e02811f2672cd082097bf2f48438adbdf32b2983 [71ms]
+2026-10-10 20:48:18.041 [info] > git hash-object -t tree /dev/null [72ms]
+2026-10-10 20:48:18.041 [warning] [GitFileSystemProvider][stat] File not found - git:/Users/savindhar/VS%20code/README.md.git?%7B%22path%22%3A%22%2FUsers%2Fsavindhar%2FVS%20code%2FREADME.md%22%2C%22ref%22%3A%22HEAD%22%7D
+2026-10-10 20:48:18.041 [info] > git hash-object -t tree /dev/null [74ms]
+2026-10-10 20:48:18.041 [warning] [GitFileSystemProvider][readFile] File not found - git:/Users/savindhar/VS%20code/README.md.git?%7B%22path%22%3A%22%2FUsers%2Fsavindhar%2FVS%20code%2FREADME.md%22%2C%22ref%22%3A%22HEAD%22%7D
+2026-10-10 20:48:19.690 [info] > git check-ignore -v -z --stdin [22ms]
+2026-10-10 20:48:55.486 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:48:55.504 [info] > git config --get commit.template [18ms]
+2026-10-10 20:48:55.504 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [17ms]
+2026-10-10 20:48:55.504 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:48:55.520 [info] > git status -z -uall [15ms]
+2026-10-10 20:48:55.521 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [15ms]
+2026-10-10 20:49:00.527 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:49:00.543 [info] > git config --get commit.template [16ms]
+2026-10-10 20:49:00.544 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [17ms]
+2026-10-10 20:49:00.544 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:49:00.560 [info] > git status -z -uall [15ms]
+2026-10-10 20:49:00.561 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [15ms]
+2026-10-10 20:49:30.304 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:49:30.319 [info] > git config --get commit.template [16ms]
+2026-10-10 20:49:30.321 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [17ms]
+2026-10-10 20:49:30.321 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:49:30.337 [info] > git status -z -uall [15ms]
+2026-10-10 20:49:30.337 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [14ms]
+2026-10-10 20:49:35.344 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:49:35.362 [info] > git config --get commit.template [19ms]
+2026-10-10 20:49:35.363 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [18ms]
+2026-10-10 20:49:35.363 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:49:35.379 [info] > git status -z -uall [15ms]
+2026-10-10 20:49:35.380 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [15ms]
+2026-10-10 20:49:41.803 [info] > git -c i18n.logOutputEncoding=UTF-8 log --format=%H%n%aN%n%aE%n%at%n%ct%n%P%n%D%n%B -z --shortstat --diff-merges=first-parent -n50 --skip=0 --topo-order --decorate=full --stdin [13ms]
+2026-10-10 20:49:41.803 [info] fatal: bad revision 'refs/heads/main'
+2026-10-10 20:49:41.804 [error] [GitHistoryProvider][provideHistoryItems] Failed to get history items with options '{"historyItemRefs":["refs/heads/main"],"limit":50,"skip":0}': Failed to execute git {
+  "exitCode": 128,
+  "gitCommand": "-c",
+  "stdout": "",
+  "stderr": "fatal: bad revision 'refs/heads/main'\n"
+}
+2026-10-10 20:49:52.488 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:49:52.501 [info] > git config --get commit.template [13ms]
+2026-10-10 20:49:52.502 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [14ms]
+2026-10-10 20:49:52.502 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:49:52.516 [info] > git status -z -uall [13ms]
+2026-10-10 20:49:52.517 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [14ms]
+2026-10-10 20:50:00.275 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:50:00.292 [info] > git config --get commit.template [17ms]
+2026-10-10 20:50:00.293 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [17ms]
+2026-10-10 20:50:00.293 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:50:00.308 [info] > git status -z -uall [14ms]
+2026-10-10 20:50:00.309 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [14ms]
+2026-10-10 20:50:27.309 [info] > git -c user.useConfigOnly=true commit --quiet [20ms]
+2026-10-10 20:50:27.309 [info] Author identity unknown
+
+*** Please tell me who you are.
+
+Run
+
+  git config --global user.email "you@example.com"
+  git config --global user.name "Your Name"
+
+to set your account's default identity.
+Omit --global to set the identity only in this repository.
+
+fatal: no email was given and auto-detection is disabled
+2026-10-10 20:50:27.322 [info] > git config --get-all user.name [13ms]
+2026-10-10 20:50:27.324 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:50:27.334 [info] > git config --get commit.template [11ms]
+2026-10-10 20:50:27.335 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [12ms]
+2026-10-10 20:50:27.335 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:50:27.347 [info] > git status -z -uall [11ms]
+2026-10-10 20:50:27.348 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [12ms]
+2026-10-10 20:50:28.452 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:50:28.470 [info] > git config --get commit.template [18ms]
+2026-10-10 20:50:28.471 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [18ms]
+2026-10-10 20:50:28.471 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:50:28.487 [info] > git status -z -uall [15ms]
+2026-10-10 20:50:28.488 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [15ms]
+2026-10-10 20:50:38.230 [info] > git -c user.useConfigOnly=true commit --quiet [20ms]
+2026-10-10 20:50:38.230 [info] Author identity unknown
+
+*** Please tell me who you are.
+
+Run
+
+  git config --global user.email "you@example.com"
+  git config --global user.name "Your Name"
+
+to set your account's default identity.
+Omit --global to set the identity only in this repository.
+
+fatal: no email was given and auto-detection is disabled
+2026-10-10 20:50:38.244 [info] > git config --get-all user.name [13ms]
+2026-10-10 20:50:38.245 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:50:38.256 [info] > git config --get commit.template [12ms]
+2026-10-10 20:50:38.257 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [12ms]
+2026-10-10 20:50:38.257 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:50:38.270 [info] > git status -z -uall [13ms]
+2026-10-10 20:50:38.270 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [12ms]
+2026-10-10 20:50:39.320 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:50:39.333 [info] > git config --get commit.template [13ms]
+2026-10-10 20:50:39.334 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [13ms]
+2026-10-10 20:50:39.334 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:50:39.347 [info] > git status -z -uall [13ms]
+2026-10-10 20:50:39.347 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [12ms]
+2026-10-10 20:51:17.811 [info] > git -c user.useConfigOnly=true commit --quiet [18ms]
+2026-10-10 20:51:17.811 [info] Author identity unknown
+
+*** Please tell me who you are.
+
+Run
+
+  git config --global user.email "you@example.com"
+  git config --global user.name "Your Name"
+
+to set your account's default identity.
+Omit --global to set the identity only in this repository.
+
+fatal: no email was given and auto-detection is disabled
+2026-10-10 20:51:17.825 [info] > git config --get-all user.name [13ms]
+2026-10-10 20:51:17.827 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:51:17.837 [info] > git config --get commit.template [11ms]
+2026-10-10 20:51:17.838 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [12ms]
+2026-10-10 20:51:17.838 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:51:17.851 [info] > git status -z -uall [12ms]
+2026-10-10 20:51:17.851 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [12ms]
+2026-10-10 20:51:18.969 [info] [Git][getRemotes] No remotes found in the git config file
+2026-10-10 20:51:18.985 [info] > git config --get commit.template [18ms]
+2026-10-10 20:51:18.986 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [17ms]
+2026-10-10 20:51:18.986 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:51:19.003 [info] > git status -z -uall [16ms]
+2026-10-10 20:51:19.004 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [16ms]
+2026-10-10 20:54:24.385 [info] > git remote add origin https://github.com/savindhar-sv/s.git [22ms]
+2026-10-10 20:54:24.399 [info] > git config --get commit.template [13ms]
+2026-10-10 20:54:24.401 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [14ms]
+2026-10-10 20:54:24.401 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:54:24.414 [info] > git status -z -uall [13ms]
+2026-10-10 20:54:24.415 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [13ms]
+2026-10-10 20:54:24.736 [info] > git push -u origin main [319ms]
+2026-10-10 20:54:24.736 [info] error: src refspec main does not match any
+error: failed to push some refs to 'https://github.com/savindhar-sv/s.git'
+2026-10-10 20:54:24.752 [info] > git config --get commit.template [14ms]
+2026-10-10 20:54:24.753 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [14ms]
+2026-10-10 20:54:24.753 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:54:24.768 [info] > git status -z -uall [14ms]
+2026-10-10 20:54:24.769 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [15ms]
+2026-10-10 20:54:53.930 [info] > git push -u origin main [34ms]
+2026-10-10 20:54:53.930 [info] error: src refspec main does not match any
+error: failed to push some refs to 'https://github.com/savindhar-sv/s.git'
+2026-10-10 20:54:53.943 [info] > git config --get commit.template [12ms]
+2026-10-10 20:54:53.944 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [12ms]
+2026-10-10 20:54:53.944 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:54:53.958 [info] > git status -z -uall [14ms]
+2026-10-10 20:54:53.959 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [14ms]
+2026-10-10 20:55:32.351 [info] > git config --get commit.template [16ms]
+2026-10-10 20:55:32.352 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [16ms]
+2026-10-10 20:55:32.352 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:55:32.368 [info] > git status -z -uall [15ms]
+2026-10-10 20:55:32.369 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [16ms]
+2026-10-10 20:55:40.086 [info] > git config --get commit.template [13ms]
+2026-10-10 20:55:40.087 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [13ms]
+2026-10-10 20:55:40.087 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:55:40.100 [info] > git status -z -uall [12ms]
+2026-10-10 20:55:40.101 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [13ms]
+2026-10-10 20:55:48.162 [info] > git config --get commit.template [16ms]
+2026-10-10 20:55:48.163 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [16ms]
+2026-10-10 20:55:48.163 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:55:48.177 [info] > git status -z -uall [13ms]
+2026-10-10 20:55:48.178 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [13ms]
+2026-10-10 20:56:06.510 [info] > git config --get commit.template [18ms]
+2026-10-10 20:56:06.511 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [18ms]
+2026-10-10 20:56:06.511 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:56:06.526 [info] > git status -z -uall [14ms]
+2026-10-10 20:56:06.527 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [14ms]
+2026-10-10 20:59:16.180 [info] > git config --get commit.template [18ms]
+2026-10-10 20:59:16.183 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [18ms]
+2026-10-10 20:59:16.183 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:59:16.200 [info] > git status -z -uall [16ms]
+2026-10-10 20:59:16.201 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [16ms]
+2026-10-10 20:59:21.217 [info] > git config --get commit.template [13ms]
+2026-10-10 20:59:21.218 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [13ms]
+2026-10-10 20:59:21.218 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:59:21.231 [info] > git status -z -uall [12ms]
+2026-10-10 20:59:21.232 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [13ms]
+2026-10-10 20:59:26.254 [info] > git config --get commit.template [17ms]
+2026-10-10 20:59:26.256 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [18ms]
+2026-10-10 20:59:26.256 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:59:26.272 [info] > git status -z -uall [15ms]
+2026-10-10 20:59:26.272 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [15ms]
+2026-10-10 20:59:36.072 [info] > git config --get commit.template [17ms]
+2026-10-10 20:59:36.073 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [16ms]
+2026-10-10 20:59:36.073 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:59:36.085 [info] > git status -z -uall [12ms]
+2026-10-10 20:59:36.086 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [11ms]
+2026-10-10 20:59:38.338 [info] > git -c i18n.logOutputEncoding=UTF-8 log --format=%H%n%aN%n%aE%n%at%n%ct%n%P%n%D%n%B -z --shortstat --diff-merges=first-parent -n50 --skip=0 --topo-order --decorate=full --stdin [13ms]
+2026-10-10 20:59:38.338 [info] fatal: bad revision 'refs/heads/main'
+2026-10-10 20:59:38.339 [error] [GitHistoryProvider][provideHistoryItems] Failed to get history items with options '{"historyItemRefs":["refs/heads/main"],"limit":50,"skip":0}': Failed to execute git {
+  "exitCode": 128,
+  "gitCommand": "-c",
+  "stdout": "",
+  "stderr": "fatal: bad revision 'refs/heads/main'\n"
+}
+2026-10-10 20:59:39.800 [info] > git push -u origin main [40ms]
+2026-10-10 20:59:39.800 [info] error: src refspec main does not match any
+error: failed to push some refs to 'https://github.com/savindhar-sv/s.git'
+2026-10-10 20:59:39.814 [info] > git config --get commit.template [12ms]
+2026-10-10 20:59:39.815 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [12ms]
+2026-10-10 20:59:39.815 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:59:39.829 [info] > git status -z -uall [13ms]
+2026-10-10 20:59:39.830 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [14ms]
+2026-10-10 20:59:42.655 [info] > git config --get commit.template [18ms]
+2026-10-10 20:59:42.656 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [18ms]
+2026-10-10 20:59:42.656 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:59:42.671 [info] > git status -z -uall [15ms]
+2026-10-10 20:59:42.672 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [15ms]
+2026-10-10 20:59:55.685 [info] > git config --get commit.template [14ms]
+2026-10-10 20:59:55.686 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [14ms]
+2026-10-10 20:59:55.686 [warning] [Git][getBranch] No such branch: main
+2026-10-10 20:59:55.700 [info] > git status -z -uall [13ms]
+2026-10-10 20:59:55.701 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [14ms]
+2026-10-10 21:00:12.021 [info] > git config --get commit.template [19ms]
+2026-10-10 21:00:12.022 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [18ms]
+2026-10-10 21:00:12.022 [warning] [Git][getBranch] No such branch: main
+2026-10-10 21:00:12.039 [info] > git status -z -uall [16ms]
+2026-10-10 21:00:12.040 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [16ms]
+2026-10-10 21:05:01.009 [info] > git config --get commit.template [22ms]
+2026-10-10 21:05:01.011 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [24ms]
+2026-10-10 21:05:01.011 [warning] [Git][getBranch] No such branch: main
+2026-10-10 21:05:01.027 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [14ms]
+2026-10-10 21:05:01.027 [info] > git status -z -uall [15ms]
+2026-10-10 21:05:06.049 [info] > git config --get commit.template [17ms]
+2026-10-10 21:05:06.050 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [17ms]
+2026-10-10 21:05:06.050 [warning] [Git][getBranch] No such branch: main
+2026-10-10 21:05:06.068 [info] > git status -z -uall [16ms]
+2026-10-10 21:05:06.068 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [15ms]
+2026-10-10 22:13:40.679 [info] > git push -u origin main [48ms]
+2026-10-10 22:13:40.679 [info] error: src refspec main does not match any
+error: failed to push some refs to 'https://github.com/savindhar-sv/s.git'
+2026-10-10 22:13:40.693 [info] > git config --get commit.template [13ms]
+2026-10-10 22:13:40.694 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [13ms]
+2026-10-10 22:13:40.694 [warning] [Git][getBranch] No such branch: main
+2026-10-10 22:13:40.710 [info] > git status -z -uall [15ms]
+2026-10-10 22:13:40.711 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [16ms]
+2026-10-10 22:13:52.683 [info] > git push -u origin main [39ms]
+2026-10-10 22:13:52.683 [info] error: src refspec main does not match any
+error: failed to push some refs to 'https://github.com/savindhar-sv/s.git'
+2026-10-10 22:13:52.696 [info] > git config --get commit.template [12ms]
+2026-10-10 22:13:52.697 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [12ms]
+2026-10-10 22:13:52.697 [warning] [Git][getBranch] No such branch: main
+2026-10-10 22:13:52.709 [info] > git status -z -uall [12ms]
+2026-10-10 22:13:52.710 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [12ms]
+2026-10-10 22:14:09.374 [info] > git fetch --all [1219ms]
+2026-10-10 22:14:09.375 [info] remote: Repository not found.
+fatal: repository 'https://github.com/savindhar-sv/s.git/' not found
+2026-10-10 22:14:09.395 [info] > git config --get commit.template [18ms]
+2026-10-10 22:14:09.396 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [18ms]
+2026-10-10 22:14:09.396 [warning] [Git][getBranch] No such branch: main
+2026-10-10 22:14:09.412 [info] > git status -z -uall [15ms]
+2026-10-10 22:14:09.413 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [15ms]
+2026-10-10 22:14:40.902 [info] > git push -u origin main [40ms]
+2026-10-10 22:14:40.902 [info] error: src refspec main does not match any
+error: failed to push some refs to 'https://github.com/savindhar-sv/s.git'
+2026-10-10 22:14:40.914 [info] > git config --get commit.template [11ms]
+2026-10-10 22:14:40.915 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [12ms]
+2026-10-10 22:14:40.915 [warning] [Git][getBranch] No such branch: main
+2026-10-10 22:14:40.928 [info] > git status -z -uall [13ms]
+2026-10-10 22:14:40.929 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [13ms]
+2026-10-10 22:14:44.143 [info] > git -c i18n.logOutputEncoding=UTF-8 log --format=%H%n%aN%n%aE%n%at%n%ct%n%P%n%D%n%B -z --shortstat --diff-merges=first-parent -n50 --skip=0 --topo-order --decorate=full --stdin [17ms]
+2026-10-10 22:14:44.143 [info] fatal: bad revision 'refs/heads/main'
+2026-10-10 22:14:44.143 [error] [GitHistoryProvider][provideHistoryItems] Failed to get history items with options '{"historyItemRefs":["refs/heads/main"],"limit":50,"skip":0}': Failed to execute git {
+  "exitCode": 128,
+  "gitCommand": "-c",
+  "stdout": "",
+  "stderr": "fatal: bad revision 'refs/heads/main'\n"
+}
+2026-10-10 22:14:45.252 [info] > git push -u origin main [40ms]
+2026-10-10 22:14:45.252 [info] error: src refspec main does not match any
+error: failed to push some refs to 'https://github.com/savindhar-sv/s.git'
+2026-10-10 22:14:45.264 [info] > git config --get commit.template [11ms]
+2026-10-10 22:14:45.266 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [12ms]
+2026-10-10 22:14:45.266 [warning] [Git][getBranch] No such branch: main
+2026-10-10 22:14:45.279 [info] > git status -z -uall [13ms]
+2026-10-10 22:14:45.280 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [13ms]
+2026-10-10 22:23:02.423 [info] > git -c user.useConfigOnly=true commit --quiet [23ms]
+2026-10-10 22:23:02.423 [info] Author identity unknown
+
+*** Please tell me who you are.
+
+Run
+
+  git config --global user.email "you@example.com"
+  git config --global user.name "Your Name"
+
+to set your account's default identity.
+Omit --global to set the identity only in this repository.
+
+fatal: no email was given and auto-detection is disabled
+2026-10-10 22:23:02.435 [info] > git config --get-all user.name [11ms]
+2026-10-10 22:23:02.447 [info] > git config --get commit.template [11ms]
+2026-10-10 22:23:02.449 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [13ms]
+2026-10-10 22:23:02.449 [warning] [Git][getBranch] No such branch: main
+2026-10-10 22:23:02.463 [info] > git status -z -uall [14ms]
+2026-10-10 22:23:02.463 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [13ms]
+2026-10-10 22:23:03.544 [info] > git config --get commit.template [11ms]
+2026-10-10 22:23:03.545 [info] > git for-each-ref --format=%(refname)%00%(upstream:short)%00%(objectname)%00%(upstream:track)%00%(upstream:remotename)%00%(upstream:remoteref) --ignore-case refs/heads/main refs/remotes/main [11ms]
+2026-10-10 22:23:03.545 [warning] [Git][getBranch] No such branch: main
+2026-10-10 22:23:03.559 [info] > git status -z -uall [13ms]
+2026-10-10 22:23:03.560 [info] > git for-each-ref --sort -committerdate --format %(refname)%00%(objectname)%00%(*objectname) [14ms]
