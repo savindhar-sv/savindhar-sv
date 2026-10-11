@@ -7,10 +7,11 @@ const toast = document.querySelector(".toast");
 const pointDisplays = document.querySelectorAll(".points-total");
 const pointsKey = "bingo-eco-points";
 const startingPoints = 1240;
-const liveTruckMarker = document.getElementById("live-truck-marker");
+const liveTruckMarkers = document.querySelectorAll(".live-truck-marker");
 const truckStatusCopy = document.querySelector(".truck-status-copy");
 const shareGpsButton = document.getElementById("share-gps-button");
-const truckBounds = { minLat: 10.92, maxLat: 11.14, minLng: 76.84, maxLng: 77.02 };
+const mapCenter = { latitude: 11.0140672, longitude: 76.9683931 };
+const mapZoom = 14;
 const truckId = "TN 37 AB 4812";
 
 let points = Number(window.localStorage.getItem(pointsKey)) || startingPoints;
@@ -18,11 +19,33 @@ let toastTimeout;
 let quizQuestion = 0;
 let quizScore = 0;
 let deferredInstallPrompt;
+let currentTruckLocation = null;
 
-function toMapPosition(latitude, longitude) {
-  const left = ((longitude - truckBounds.minLng) / (truckBounds.maxLng - truckBounds.minLng)) * 100;
-  const top = ((truckBounds.maxLat - latitude) / (truckBounds.maxLat - truckBounds.minLat)) * 100;
-  return { left: Math.min(90, Math.max(10, left)), top: Math.min(75, Math.max(18, top)) };
+function mercatorY(latitude) {
+  const limitedLatitude = Math.max(-85.05112878, Math.min(85.05112878, latitude));
+  const sine = Math.sin((limitedLatitude * Math.PI) / 180);
+  return (0.5 - Math.log((1 + sine) / (1 - sine)) / (4 * Math.PI)) * 256 * 2 ** mapZoom;
+}
+
+function updateTruckMarkers(truck) {
+  liveTruckMarkers.forEach(marker => {
+    const map = marker.closest(".map");
+    if (!truck || !map || !map.clientWidth || !map.clientHeight) {
+      marker.hidden = true;
+      return;
+    }
+    const worldSize = 256 * 2 ** mapZoom;
+    let longitudeDelta = truck.longitude - mapCenter.longitude;
+    if (longitudeDelta > 180) longitudeDelta -= 360;
+    if (longitudeDelta < -180) longitudeDelta += 360;
+    const horizontalOffset = (longitudeDelta / 360) * worldSize;
+    const verticalOffset = mercatorY(truck.latitude) - mercatorY(mapCenter.latitude);
+    const left = 50 + (horizontalOffset / map.clientWidth) * 100;
+    const top = 50 + (verticalOffset / map.clientHeight) * 100;
+    marker.hidden = left < 2 || left > 98 || top < 2 || top > 98;
+    marker.style.left = `${left}%`;
+    marker.style.top = `${top}%`;
+  });
 }
 
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -35,16 +58,14 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 function setTruckStatus(truck) {
-  if (!truck || !liveTruckMarker || !truckStatusCopy) {
+  if (!truck || !truckStatusCopy) {
     return;
   }
-  const store = { latitude: 11.018, longitude: 76.961 };
-  const distanceKm = haversineKm(store.latitude, store.longitude, truck.latitude, truck.longitude);
-  const position = toMapPosition(truck.latitude, truck.longitude);
-  liveTruckMarker.style.left = `${position.left}%`;
-  liveTruckMarker.style.top = `${position.top}%`;
-  const label = Number.isFinite(distanceKm) ? `${distanceKm.toFixed(1)} km away` : "location updated";
-  truckStatusCopy.innerHTML = `Truck <strong>${truck.id || truckId}</strong> · ${label}`;
+  currentTruckLocation = truck;
+  updateTruckMarkers(truck);
+  const distanceKm = haversineKm(mapCenter.latitude, mapCenter.longitude, truck.latitude, truck.longitude);
+  const label = Number.isFinite(distanceKm) ? `${distanceKm.toFixed(1)} km from map centre` : "location updated";
+  truckStatusCopy.textContent = `Truck ${truck.id || truckId} · ${label}`;
 }
 
 async function refreshTruckLocations() {
@@ -60,12 +81,14 @@ async function refreshTruckLocations() {
       setTruckStatus(matchingTruck);
       return;
     }
-    const fallback = { id: truckId, latitude: 11.018, longitude: 76.961 };
-    setTruckStatus(fallback);
-    truckStatusCopy.innerHTML = `Truck <strong>${truckId}</strong> · awaiting live GPS`;
+    currentTruckLocation = null;
+    updateTruckMarkers(null);
+    truckStatusCopy.textContent = `Truck ${truckId} · awaiting live GPS`;
   } catch (error) {
+    currentTruckLocation = null;
+    updateTruckMarkers(null);
     if (truckStatusCopy) {
-      truckStatusCopy.innerHTML = `Truck <strong>${truckId}</strong> · waiting for live GPS`;
+      truckStatusCopy.textContent = `Truck ${truckId} · waiting for live GPS`;
     }
     console.warn("Unable to sync truck GPS:", error);
   }
@@ -289,7 +312,7 @@ function openDialog(title, description, content, onOpen) {
 const profileKey = "bingo-profile";
 const preferencesKey = "bingo-preferences";
 const defaultProfile = { name: "Ananya Krishnan", email: "" };
-const defaultPreferences = { appearance: "light", notifications: true };
+const defaultPreferences = { appearance: "system", notifications: true, neighborhood: "RS Puram" };
 
 function readStoredObject(key, fallback) {
   try {
@@ -337,11 +360,18 @@ function renderProfile() {
 
 function savePreferences() {
   window.localStorage.setItem(preferencesKey, JSON.stringify(preferences));
-  document.body.classList.toggle("dark-mode", preferences.appearance === "dark");
+  const useDarkMode = preferences.appearance === "dark" ||
+    (preferences.appearance === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  document.body.classList.toggle("dark-mode", useDarkMode);
   document.documentElement.dataset.appearance = preferences.appearance;
+  const locationName = document.querySelector(".location-pill strong");
+  if (locationName) {
+    locationName.textContent = preferences.neighborhood || defaultPreferences.neighborhood;
+  }
 }
 
 function openProfileSettings() {
+  setMenuOpen(false);
   openDialog("Your profile", "Update the name and email saved on this device.", `
     <form class="dialog-form" id="profile-form">
       <label>Display name<input class="input" name="name" required maxlength="60" value="${escapeHtml(profile.name || defaultProfile.name)}"></label>
@@ -369,10 +399,24 @@ function openProfileSettings() {
 }
 
 function openSettings() {
-  openDialog("Settings", "Choose how BinGo behaves on this device.", `
+  setMenuOpen(false);
+  openDialog("Settings", "Manage your profile, appearance, activity, and app preferences on this device.", `
     <form class="dialog-form" id="settings-form">
+      <p class="settings-section-title">Profile</p>
+      <label>Display name<input class="input" name="name" required maxlength="60" value="${escapeHtml(profile.name || defaultProfile.name)}"></label>
+      <label>Email address<input class="input" name="email" type="email" maxlength="254" value="${escapeHtml(profile.email || "")}" placeholder="you@example.com"></label>
+      <p class="settings-section-title">App preferences</p>
+      <label>Neighborhood
+        <select class="input" name="neighborhood">
+          <option>RS Puram</option>
+          <option>Saibaba Colony</option>
+          <option>Gandhipuram</option>
+          <option>Race Course</option>
+        </select>
+      </label>
       <label>Appearance
         <select class="input" name="appearance">
+          <option value="system">Use device setting</option>
           <option value="light">Light</option>
           <option value="dark">Dark</option>
         </select>
@@ -381,30 +425,118 @@ function openSettings() {
         <input name="notifications" type="checkbox">
       </label>
       <button class="primary-button" type="submit">Save settings</button>
-      <button class="secondary-button" id="reset-points-button" type="button">Reset eco points</button>
+      <div class="settings-actions">
+        <button class="secondary-button" id="activity-settings-button" type="button">View your activity</button>
+        <button class="secondary-button" id="reset-points-button" type="button">Reset local app data</button>
+      </div>
+      <a class="settings-help" href="mailto:savindhar@manchesters.in?subject=BinGo%20app%20help">Need help? Email savindhar@manchesters.in</a>
     </form>`, () => {
     const form = dialog.querySelector("#settings-form");
-    form.elements.appearance.value = preferences.appearance === "dark" ? "dark" : "light";
+    form.elements.appearance.value = ["system", "light", "dark"].includes(preferences.appearance)
+      ? preferences.appearance
+      : "system";
+    form.elements.neighborhood.value = preferences.neighborhood || defaultPreferences.neighborhood;
     form.elements.notifications.checked = preferences.notifications !== false;
     form.addEventListener("submit", event => {
       event.preventDefault();
+      const formData = new FormData(form);
+      const updatedName = String(formData.get("name") || "").trim();
+      if (!updatedName) {
+        form.elements.name.reportValidity();
+        return;
+      }
+      profile = {
+        name: updatedName,
+        email: String(formData.get("email") || "").trim()
+      };
       preferences = {
         appearance: form.elements.appearance.value,
-        notifications: form.elements.notifications.checked
+        notifications: form.elements.notifications.checked,
+        neighborhood: form.elements.neighborhood.value
       };
+      window.localStorage.setItem(profileKey, JSON.stringify(profile));
       savePreferences();
+      renderProfile();
       dialog.close();
       notify("Settings saved.");
     });
+    dialog.querySelector("#activity-settings-button").addEventListener("click", () => {
+      dialog.close();
+      showView("activity", { updateHistory: true });
+    });
     dialog.querySelector("#reset-points-button").addEventListener("click", () => {
-      if (!window.confirm("Reset your eco points to the starting balance?")) {
+      if (!window.confirm("Reset your saved profile, preferences, and eco points on this device?")) {
         return;
       }
+      profile = { ...defaultProfile };
+      preferences = { ...defaultPreferences };
       points = startingPoints;
-      window.localStorage.setItem(pointsKey, String(points));
+      window.localStorage.removeItem(profileKey);
+      window.localStorage.removeItem(preferencesKey);
       updatePoints(0);
+      renderProfile();
+      savePreferences();
       dialog.close();
-      notify("Eco points reset to the starting balance.");
+      notify("Local profile, settings, and points were reset.");
+    });
+  });
+}
+
+function openActionMenu(menu) {
+  const options = {
+    profile: {
+      title: "Profile actions",
+      description: "Quick links for your BinGo account.",
+      actions: [
+        ["profile", "Edit profile"],
+        ["activity", "View your activity"],
+        ["settings", "Open settings"]
+      ]
+    },
+    impact: {
+      title: "Your impact",
+      description: "Explore your progress and rewards.",
+      actions: [
+        ["activity", "View activity"],
+        ["rewards", "Explore eco rewards"],
+        ["settings", "Open settings"]
+      ]
+    },
+    community: {
+      title: "Community board",
+      description: "Choose what you’d like to do next.",
+      actions: [
+        ["donate", "Browse or share items"],
+        ["explore", "Explore nearby places"],
+        ["help", "Contact support"]
+      ]
+    }
+  }[menu];
+  if (!options) {
+    console.error("Unknown action menu:", menu);
+    return;
+  }
+
+  openDialog(options.title, options.description, `
+    <div class="action-menu-list">
+      ${options.actions.map(([action, label]) =>
+        `<button class="secondary-button" type="button" data-menu-action="${action}">${label}<span aria-hidden="true">→</span></button>`
+      ).join("")}
+    </div>`, () => {
+    dialog.querySelectorAll("[data-menu-action]").forEach(button => {
+      button.addEventListener("click", () => {
+        const action = button.dataset.menuAction;
+        dialog.close();
+        if (action === "profile") {
+          openProfileSettings();
+        } else if (action === "settings") {
+          openSettings();
+        } else if (action === "help") {
+          window.location.href = "mailto:savindhar@manchesters.in?subject=BinGo%20app%20help";
+        } else {
+          showView(action, { updateHistory: true });
+        }
+      });
     });
   });
 }
@@ -413,6 +545,12 @@ document.querySelectorAll(".profile-button").forEach(button => {
   button.addEventListener("click", openProfileSettings);
 });
 document.querySelector("#settings-button").addEventListener("click", openSettings);
+document.querySelector("#profile-menu-button").addEventListener("click", () => {
+  openActionMenu("profile");
+});
+document.querySelectorAll(".more-button").forEach(button => {
+  button.addEventListener("click", () => openActionMenu(button.dataset.menu));
+});
 renderProfile();
 savePreferences();
 
@@ -653,6 +791,9 @@ window.addEventListener("appinstalled", () => {
 
 refreshTruckLocations();
 window.setInterval(refreshTruckLocations, 12000);
+window.addEventListener("resize", () => {
+  updateTruckMarkers(currentTruckLocation);
+});
 
 if ("serviceWorker" in navigator && ["https:", "localhost"].some(host => window.location.hostname === host || window.location.hostname.endsWith(`.${host}`))) {
   window.addEventListener("load", () => {

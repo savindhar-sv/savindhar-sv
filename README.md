@@ -33,6 +33,8 @@ On a supported browser, choose **Install app** to add BinGo to your device. On i
 
 The app uses a service worker and browser storage for offline caching and eco points. Clear the site's storage in your browser settings to reset its locally saved points.
 
+The Explore and dashboard map panels embed Google Maps centered near `11.0140672, 76.9683931` in Coimbatore. Maps need an internet connection; the live truck marker appears when the GPS backend has a current truck location. Use **Open in Google Maps** to launch the full map.
+
 ### Included prototype flows
 
 - Collection dashboard with route status, eco points, impact chart, and community board
