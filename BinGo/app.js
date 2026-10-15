@@ -1,3 +1,5 @@
+import * as maplibregl from "https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.mjs";
+
 const views = document.querySelectorAll(".view");
 const navItems = document.querySelectorAll("[data-view]");
 const sidebar = document.querySelector(".sidebar");
@@ -7,12 +9,31 @@ const toast = document.querySelector(".toast");
 const pointDisplays = document.querySelectorAll(".points-total");
 const pointsKey = "bingo-eco-points";
 const startingPoints = 1240;
-const liveTruckMarkers = document.querySelectorAll(".live-truck-marker");
 const truckStatusCopy = document.querySelector(".truck-status-copy");
 const shareGpsButton = document.getElementById("share-gps-button");
 const mapCenter = { latitude: 11.0140672, longitude: 76.9683931 };
 const mapZoom = 14;
 const truckId = "TN 37 AB 4812";
+const liveTruckMarkers = Array.from(document.querySelectorAll(".maplibre-map"), container => {
+  const map = new maplibregl.Map({
+    container,
+    style: "https://demotiles.maplibre.org/style.json",
+    center: [mapCenter.longitude, mapCenter.latitude],
+    zoom: mapZoom
+  });
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+
+  const element = document.createElement("div");
+  element.className = "truck-marker live-truck-marker";
+  element.setAttribute("aria-label", "Live truck position");
+  element.textContent = "▰";
+
+  return {
+    map,
+    marker: new maplibregl.Marker({ element, anchor: "center" }),
+    added: false
+  };
+});
 
 let points = Number(window.localStorage.getItem(pointsKey)) || startingPoints;
 let toastTimeout;
@@ -157,30 +178,27 @@ const nearbyPlaces = [
   }
 ];
 
-function mercatorY(latitude, zoom = mapZoom) {
-  const limitedLatitude = Math.max(-85.05112878, Math.min(85.05112878, latitude));
-  const sine = Math.sin((limitedLatitude * Math.PI) / 180);
-  return (0.5 - Math.log((1 + sine) / (1 - sine)) / (4 * Math.PI)) * 256 * 2 ** zoom;
-}
-
 function updateTruckMarkers(truck) {
-  liveTruckMarkers.forEach(marker => {
-    const map = marker.closest(".map");
-    if (!truck || !map || !map.clientWidth || !map.clientHeight) {
-      marker.hidden = true;
+  const hasValidLocation = truck
+    && Number.isFinite(truck.longitude)
+    && Number.isFinite(truck.latitude)
+    && Math.abs(truck.longitude) <= 180
+    && Math.abs(truck.latitude) <= 90;
+
+  liveTruckMarkers.forEach(({ map, marker, added }, index) => {
+    if (!hasValidLocation) {
+      if (added) {
+        marker.remove();
+        liveTruckMarkers[index].added = false;
+      }
       return;
     }
-    const worldSize = 256 * 2 ** mapZoom;
-    let longitudeDelta = truck.longitude - mapCenter.longitude;
-    if (longitudeDelta > 180) longitudeDelta -= 360;
-    if (longitudeDelta < -180) longitudeDelta += 360;
-    const horizontalOffset = (longitudeDelta / 360) * worldSize;
-    const verticalOffset = mercatorY(truck.latitude) - mercatorY(mapCenter.latitude);
-    const left = 50 + (horizontalOffset / map.clientWidth) * 100;
-    const top = 50 + (verticalOffset / map.clientHeight) * 100;
-    marker.hidden = left < 2 || left > 98 || top < 2 || top > 98;
-    marker.style.left = `${left}%`;
-    marker.style.top = `${top}%`;
+
+    marker.setLngLat([truck.longitude, truck.latitude]);
+    if (!added) {
+      marker.addTo(map);
+      liveTruckMarkers[index].added = true;
+    }
   });
 }
 
@@ -304,7 +322,7 @@ function initialiseNearbyDirectory() {
       <div><strong>Nearby waste &amp; reuse</strong><small id="nearby-place-count"></small></div>
       <button class="primary-button" id="use-gps-button" type="button">Use my GPS</button>
     </div>
-    <p class="nearby-privacy">Your GPS location stays in this browser unless you choose Directions. The embedded map uses a fixed Coimbatore centre.</p>
+    <p class="nearby-privacy">Your GPS location stays in this browser unless you choose Directions. The interactive map uses a fixed Coimbatore centre.</p>
     <label class="nearby-filter-label" for="nearby-category-filter">Show</label>
     <select class="input nearby-filter" id="nearby-category-filter">
       <option value="all">All nearby options</option>
@@ -489,6 +507,11 @@ function showView(name, { updateHistory = false, scroll = true } = {}) {
   }
 
   views.forEach(view => view.classList.toggle("active-view", view === target));
+  liveTruckMarkers.forEach(({ map }) => {
+    if (map.getContainer().closest(".view") === target) {
+      map.resize();
+    }
+  });
   updateTruckMarkers(currentTruckLocation);
   navItems.forEach(item => {
     const isCurrent = item.dataset.view === name;

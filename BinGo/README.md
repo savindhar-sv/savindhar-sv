@@ -21,7 +21,7 @@ BinGo is an installable, offline-capable app for a smart waste management and co
 
 ### Run locally
 
-No build step or third-party package is required. For full app installation and offline support, serve the folder over `localhost` or HTTPS:
+No build step or package installation is required. The interactive maps load MapLibre GL JS and map tiles from the internet. For app installation and offline caching of the app shell, serve the folder over `localhost` or HTTPS:
 
 ```bash
 python3 -m http.server 8000
@@ -31,9 +31,9 @@ Then visit `http://localhost:8000`.
 
 On a supported browser, choose **Install app** to add BinGo to your device. On iPhone or iPad, open the site in Safari and choose **Add to Home Screen**. Once the app has loaded online, its screens and assets are available offline.
 
-The app uses a service worker and browser storage for offline caching and eco points. Clear the site's storage in your browser settings to reset its locally saved points.
+The app uses a service worker and browser storage for offline caching and eco points. Maps require an internet connection and are not available offline. Clear the site's storage in your browser settings to reset its locally saved points.
 
-The Explore and dashboard panels use embedded Google Maps centered near `11.0140672, 76.9683931` in Coimbatore. Opening the map itself requires an internet connection. The live truck marker appears when the GPS backend has a current truck location.
+The Explore and dashboard panels use interactive MapLibre maps centered near `11.0140672, 76.9683931` in Coimbatore. The live truck marker appears when the GPS backend has a current truck location.
 
 Explore includes the composting/organic suppliers and e-waste services supplied for Coimbatore, plus Google Maps searches for CCMC MCCs, community bins, and environmental volunteer groups. **Use my GPS** requests browser permission only after the user taps it (GPS requires HTTPS or localhost). Nearby distances are approximate straight-line estimates based on the available locality-level coordinates; Google Maps directions links can be opened for routing. Volunteering interest opens an email draft and is not an online NGO registration.
 

@@ -4,14 +4,6 @@
   display: none;
 }
 
-.map-frame {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
-
 .live-truck-marker {
   z-index: 5;
   pointer-events: none;
@@ -638,6 +630,21 @@ textarea:focus-visible {
   color: var(--green);
   font-size: 10px;
   font-weight: 700;
+}
+
+.maplibre-map {
+  background: #e8eee5;
+}
+
+.maplibre-map::before,
+.maplibre-map::after {
+  display: none;
+  content: none;
+}
+
+.maplibregl-marker.truck-marker {
+  top: 0;
+  left: 0;
 }
 
 .dark-mode .nearby-distance-note,
