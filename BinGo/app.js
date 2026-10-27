@@ -1,5 +1,3 @@
-import * as maplibregl from "https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.mjs";
-
 const views = document.querySelectorAll(".view");
 const navItems = document.querySelectorAll("[data-view]");
 const sidebar = document.querySelector(".sidebar");
@@ -14,26 +12,17 @@ const shareGpsButton = document.getElementById("share-gps-button");
 const mapCenter = { latitude: 11.0140672, longitude: 76.9683931 };
 const mapZoom = 14;
 const truckId = "TN 37 AB 4812";
-const liveTruckMarkers = Array.from(document.querySelectorAll(".maplibre-map"), container => {
-  const map = new maplibregl.Map({
-    container,
-    style: "https://demotiles.maplibre.org/style.json",
-    center: [mapCenter.longitude, mapCenter.latitude],
-    zoom: mapZoom
-  });
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+const liveTruckMarkers = [];
+const hotspotMaps = [];
+const sessionStorageKey = "bingo-session";
 
-  const element = document.createElement("div");
-  element.className = "truck-marker live-truck-marker";
-  element.setAttribute("aria-label", "Live truck position");
-  element.textContent = "▰";
-
-  return {
-    map,
-    marker: new maplibregl.Marker({ element, anchor: "center" }),
-    added: false
-  };
-});
+let communitySession = null;
+let localEncryptionKey = null;
+let selectedReportLocation = null;
+let truckAlertWatch = null;
+let truckAlerted = false;
+let reportLocationMarker = null;
+let reportCategory = "Mixed waste";
 
 let points = Number(window.localStorage.getItem(pointsKey)) || startingPoints;
 let toastTimeout;
@@ -185,7 +174,7 @@ function updateTruckMarkers(truck) {
     && Math.abs(truck.longitude) <= 180
     && Math.abs(truck.latitude) <= 90;
 
-  liveTruckMarkers.forEach(({ map, marker, added }, index) => {
+  liveTruckMarkers.forEach(({ marker, added }, index) => {
     if (!hasValidLocation) {
       if (added) {
         marker.remove();
@@ -196,10 +185,186 @@ function updateTruckMarkers(truck) {
 
     marker.setLngLat([truck.longitude, truck.latitude]);
     if (!added) {
-      marker.addTo(map);
+      marker.addTo(liveTruckMarkers[index].map);
       liveTruckMarkers[index].added = true;
     }
   });
+}
+
+function reportCategoryClass(category) {
+  return {
+    "Mixed waste": "mixed",
+    Plastic: "plastic",
+    Construction: "construction"
+  }[category] || "mixed";
+}
+
+async function refreshDumpingReportMarkers() {
+  if (!hotspotMaps.length) {
+    return;
+  }
+  try {
+    const response = await fetch("/api/reports", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error("Hotspot reports are unavailable.");
+    }
+    const payload = await response.json();
+    const reports = Array.isArray(payload?.reports) ? payload.reports : [];
+    hotspotMaps.forEach(({ map, maplibregl, markers }) => {
+      markers.forEach(marker => marker.remove());
+      markers.length = 0;
+      reports.forEach(report => {
+        if (!Number.isFinite(report.latitude) || !Number.isFinite(report.longitude)) {
+          return;
+        }
+        const element = document.createElement("button");
+        element.type = "button";
+        element.className = `dumping-hotspot-marker ${reportCategoryClass(report.category)}`;
+        element.textContent = "!";
+        element.title = `${report.category} · community reported, unverified`;
+        element.setAttribute("aria-label", element.title);
+        element.addEventListener("click", event => {
+          event.stopPropagation();
+          const details = document.createElement("div");
+          const heading = document.createElement("strong");
+          heading.textContent = `${report.category} hotspot`;
+          const description = document.createElement("p");
+          description.textContent = "Community reported · unverified · location rounded to protect privacy";
+          details.append(heading, description);
+          new maplibregl.Popup({ offset: 22 })
+            .setLngLat([report.longitude, report.latitude])
+            .setDOMContent(details)
+            .addTo(map);
+        });
+        const marker = new maplibregl.Marker({ element, anchor: "bottom" })
+          .setLngLat([report.longitude, report.latitude])
+          .addTo(map);
+        markers.push(marker);
+      });
+    });
+  } catch (error) {
+    console.warn("Unable to load community dumping hotspots:", error);
+  }
+}
+
+async function initialiseMaps() {
+  const containers = document.querySelectorAll(".maplibre-map");
+  if (!containers.length) {
+    return;
+  }
+
+  try {
+    const maplibregl = await import("https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.mjs");
+    containers.forEach(container => {
+      const map = new maplibregl.Map({
+        container,
+        style: "https://demotiles.maplibre.org/style.json",
+        center: [mapCenter.longitude, mapCenter.latitude],
+        zoom: mapZoom
+      });
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+      map.on("load", () => map.resize());
+
+      const isExploreMap = container.classList.contains("large-map-frame");
+      const isReportMap = container.classList.contains("report-map-frame");
+      if (isExploreMap || isReportMap) {
+        hotspotMaps.push({ map, maplibregl, markers: [] });
+      }
+
+      if (isReportMap) {
+        map.on("click", event => {
+          selectedReportLocation = {
+            latitude: event.lngLat.lat,
+            longitude: event.lngLat.lng
+          };
+          if (!reportLocationMarker) {
+            const element = document.createElement("div");
+            element.className = "report-location-marker";
+            element.setAttribute("aria-label", "Selected report location");
+            reportLocationMarker = new maplibregl.Marker({ element, anchor: "center" });
+          }
+          reportLocationMarker.setLngLat([event.lngLat.lng, event.lngLat.lat]).addTo(map);
+          document.querySelector("#report-location-status").textContent =
+            "Location selected. The saved map pin is rounded to approximately 100 metres.";
+        });
+      }
+
+      if (isExploreMap) {
+        nearbyPlaces.filter(place => {
+          return Number.isFinite(place.latitude)
+            && Number.isFinite(place.longitude)
+            && haversineKm(mapCenter.latitude, mapCenter.longitude, place.latitude, place.longitude) <= 3;
+        }).forEach(place => {
+          const element = document.createElement("button");
+          element.type = "button";
+          element.className = `map-place-marker ${place.category}`;
+          element.textContent = place.category === "ewaste" ? "⌁" : "♻";
+          element.setAttribute("aria-label", `${place.name}, ${place.kind}`);
+          element.title = place.name;
+          element.addEventListener("click", event => {
+            event.stopPropagation();
+            const details = document.createElement("div");
+            const heading = document.createElement("strong");
+            heading.textContent = place.name;
+            const description = document.createElement("p");
+            description.textContent = place.address;
+            details.append(heading, description);
+            new maplibregl.Popup({ offset: 22 })
+              .setLngLat([place.longitude, place.latitude])
+              .setDOMContent(details)
+              .addTo(map);
+          });
+          new maplibregl.Marker({ element, anchor: "bottom" })
+            .setLngLat([place.longitude, place.latitude])
+            .addTo(map);
+        });
+      }
+
+      const element = document.createElement("div");
+      element.className = "truck-marker live-truck-marker";
+      element.setAttribute("aria-label", "Live truck position");
+      element.textContent = "▰";
+      liveTruckMarkers.push({
+        map,
+        marker: new maplibregl.Marker({ element, anchor: "center" }),
+        added: false
+      });
+      if (isExploreMap) {
+        const legend = document.createElement("div");
+        legend.className = "hotspot-legend";
+        legend.setAttribute("aria-label", "Map pin legend");
+        [
+          ["mixed", "Mixed waste"],
+          ["plastic", "Plastic"],
+          ["construction", "Construction"]
+        ].forEach(([category, label]) => {
+          const item = document.createElement("span");
+          const swatch = document.createElement("i");
+          swatch.className = `hotspot-swatch ${category}`;
+          const text = document.createElement("span");
+          text.textContent = label;
+          item.append(swatch, text);
+          legend.append(item);
+        });
+        const verificationNote = document.createElement("small");
+        verificationNote.textContent = "Community reports are unverified";
+        legend.append(verificationNote);
+        container.parentElement.append(legend);
+      }
+      map.on("error", event => {
+        console.warn("BinGo map could not load a map resource:", event.error);
+        container.dataset.mapStatus = "offline";
+      });
+    });
+    refreshDumpingReportMarkers();
+    updateTruckMarkers(currentTruckLocation);
+  } catch (error) {
+    console.error("BinGo could not load MapLibre. Other app features remain available:", error);
+    containers.forEach(container => {
+      container.dataset.mapStatus = "offline";
+      container.setAttribute("aria-label", "Map unavailable. Check your internet connection.");
+    });
+  }
 }
 
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -212,21 +377,17 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 function nearbySearchUrl(place) {
-  const location = userCoordinates
-    ? `${userCoordinates.latitude},${userCoordinates.longitude}`
-    : `${mapCenter.latitude},${mapCenter.longitude}`;
   const query = place.searchOnly
-    ? `${place.name} ${place.kind} near ${location}`
+    ? `${place.name} ${place.kind} near Coimbatore, Tamil Nadu`
     : `${place.name}, ${place.address}`;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 function nearbyDirectionsUrl(place) {
-  if (!userCoordinates || place.searchOnly) {
+  if (place.searchOnly) {
     return "";
   }
-  const origin = `${userCoordinates.latitude},${userCoordinates.longitude}`;
-  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(`${place.name}, ${place.address}`)}&travelmode=driving`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${place.name}, ${place.address}`)}&travelmode=driving`;
 }
 
 function renderNearbyPlaces(category = "all") {
@@ -322,7 +483,7 @@ function initialiseNearbyDirectory() {
       <div><strong>Nearby waste &amp; reuse</strong><small id="nearby-place-count"></small></div>
       <button class="primary-button" id="use-gps-button" type="button">Use my GPS</button>
     </div>
-    <p class="nearby-privacy">Your GPS location stays in this browser unless you choose Directions. The interactive map uses a fixed Coimbatore centre.</p>
+    <p class="nearby-privacy">Your GPS stays on this device. Map searches and directions use neighbourhood-level locations only.</p>
     <label class="nearby-filter-label" for="nearby-category-filter">Show</label>
     <select class="input nearby-filter" id="nearby-category-filter">
       <option value="all">All nearby options</option>
@@ -376,6 +537,17 @@ function setTruckStatus(truck) {
   const distanceKm = haversineKm(mapCenter.latitude, mapCenter.longitude, truck.latitude, truck.longitude);
   const label = Number.isFinite(distanceKm) ? `${distanceKm.toFixed(1)} km from map centre` : "location updated";
   truckStatusCopy.textContent = `Truck ${truck.id || truckId} · ${label}`;
+  if (userCoordinates && haversineKm(userCoordinates.latitude, userCoordinates.longitude, truck.latitude, truck.longitude) <= 0.5) {
+    if (!truckAlerted) {
+      truckAlerted = true;
+      notify("Your collection truck is within 500 metres.");
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("BinGo collection alert", { body: "Your collection truck is within 500 metres." });
+      }
+    }
+  } else {
+    truckAlerted = false;
+  }
 }
 
 async function refreshTruckLocations() {
@@ -386,7 +558,8 @@ async function refreshTruckLocations() {
     }
     const payload = await response.json();
     const fleet = Array.isArray(payload?.trucks) ? payload.trucks : [];
-    const matchingTruck = fleet.find(truck => truck.id === truckId) || fleet[0];
+    const matchingTruck = fleet.find(truck => truck.id === truckId && truck.status === "live")
+      || fleet.find(truck => truck.status === "live");
     if (matchingTruck) {
       setTruckStatus(matchingTruck);
       return;
@@ -404,26 +577,70 @@ async function refreshTruckLocations() {
   }
 }
 
+async function loadCollectionSchedule() {
+  const status = document.querySelector(".collection-card .status-badge");
+  const arrival = document.querySelector(".collection-card .arrival");
+  const heading = arrival.querySelector("strong");
+  const detail = arrival.querySelectorAll("p")[1];
+  const neighborhood = preferences.neighborhood || "RS Puram";
+  try {
+    const response = await fetch(`/api/schedule?neighborhood=${encodeURIComponent(neighborhood)}`, {
+      cache: "no-store"
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error || "Collection schedule unavailable.");
+    }
+    if (!Array.isArray(payload.schedules) || payload.schedules.length === 0) {
+      status.textContent = "Schedule needed";
+      heading.textContent = "Not set";
+      detail.textContent = `No verified collection days are configured for ${neighborhood}.`;
+      return;
+    }
+
+    const schedule = payload.schedules[0];
+    const dayNames = schedule.weekdays.map(day => day.slice(0, 3)).join(", ");
+    const details = `${schedule.waste_type} · ${dayNames} · ${schedule.pickup_window}`;
+    status.textContent = "Schedule data loaded";
+    arrival.querySelector("p").textContent = "Weekly collection";
+    heading.textContent = dayNames;
+    detail.replaceChildren(document.createTextNode(details + " · "));
+    const source = document.createElement("a");
+    source.href = schedule.source_url;
+    source.target = "_blank";
+    source.rel = "noopener noreferrer";
+    source.textContent = `Source updated ${schedule.verified_at}`;
+    detail.append(source);
+    if (payload.schedules.length > 1) {
+      detail.append(document.createTextNode(` · +${payload.schedules.length - 1} other schedule(s)`));
+    }
+  } catch (error) {
+    status.textContent = "Schedule unavailable";
+    heading.textContent = "Unavailable";
+    detail.textContent = "Could not load collection schedule data. Try again when connected.";
+    console.error("Unable to load collection schedule:", error);
+  }
+}
+
 async function shareTruckLocationFromPhone() {
   if (!navigator.geolocation) {
     notify("This browser cannot share live GPS coordinates.");
     return;
   }
 
-  const truckForm = document.createElement("form");
-  truckForm.innerHTML = `
-    <div class="dialog-form">
+  const truckForm = `
+    <form class="dialog-form" id="truck-location-form">
       <label>Truck ID
         <input class="input" name="truckId" value="${truckId}" required>
       </label>
       <label>Driver token
-        <input class="input" name="token" type="password" value="test-driver-token" placeholder="Paste your private driver token" required>
+        <input class="input" name="token" type="password" autocomplete="off" placeholder="Paste your private driver token" required>
       </label>
       <button class="primary-button" type="submit">Share live position</button>
-    </div>`;
+    </form>`;
 
-  openDialog("Share live truck GPS", "Use the driver phone to send the route team’s current coordinates to the app.", truckForm.innerHTML, () => {
-    const form = dialog.querySelector("form");
+  openDialog("Share live truck GPS", "Use the driver phone to send the route team’s current coordinates to the app.", truckForm, () => {
+    const form = dialog.querySelector("#truck-location-form");
     form.addEventListener("submit", async event => {
       event.preventDefault();
       const formData = new FormData(form);
@@ -507,7 +724,15 @@ function showView(name, { updateHistory = false, scroll = true } = {}) {
   }
 
   views.forEach(view => view.classList.toggle("active-view", view === target));
+  if (name === "admin") {
+    loadPlatformMetrics();
+  }
   liveTruckMarkers.forEach(({ map }) => {
+    if (map.getContainer().closest(".view") === target) {
+      map.resize();
+    }
+  });
+  hotspotMaps.forEach(({ map }) => {
     if (map.getContainer().closest(".view") === target) {
       map.resize();
     }
@@ -600,7 +825,9 @@ document.querySelectorAll(".category-pills").forEach(group => {
     pill.setAttribute("aria-pressed", String(pill.classList.contains("active")));
     pill.addEventListener("click", () => {
       setActivePill(pill);
-      if (!group.classList.contains("report-pills")) {
+      if (group.classList.contains("report-pills")) {
+        reportCategory = pill.textContent.trim();
+      } else {
         filterDonations(pill.textContent.trim());
       }
     });
@@ -746,6 +973,14 @@ function openSettings() {
         <button class="secondary-button" id="reset-points-button" type="button">Reset local app data</button>
       </div>
       <a class="settings-help" href="mailto:savindhar@manchesters.in?subject=BinGo%20app%20help">Need help? Email savindhar@manchesters.in</a>
+    </form>
+    <form class="dialog-form survey-form" id="survey-form">
+      <h3>Quick design survey · rate 1–5</h3>
+      <label>Visual clarity<select class="input" name="visual_clarity" required><option value="">Choose</option><option value="1">1 · Needs work</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5 · Clear</option></select></label>
+      <label>Icon readability<select class="input" name="icon_readability" required><option value="">Choose</option><option value="1">1 · Needs work</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5 · Clear</option></select></label>
+      <label>Layout appeal<select class="input" name="layout_appeal" required><option value="">Choose</option><option value="1">1 · Needs work</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5 · Appealing</option></select></label>
+      <p class="nearby-privacy" id="survey-summary">Survey summary is loading…</p>
+      <button class="secondary-button" type="submit">Submit anonymous ratings</button>
     </form>`, () => {
     const form = dialog.querySelector("#settings-form");
     form.elements.appearance.value = ["system", "light", "dark"].includes(preferences.appearance)
@@ -772,9 +1007,16 @@ function openSettings() {
       };
       window.localStorage.setItem(profileKey, JSON.stringify(profile));
       savePreferences();
+      loadCollectionSchedule();
       renderProfile();
       dialog.close();
       notify("Settings saved.");
+      if (communitySession) {
+        communityRequest("/api/session", {
+          method: "PATCH",
+          body: { neighborhood: preferences.neighborhood }
+        }).catch(error => notify(`Settings saved here, but the community area did not sync: ${error.message}`));
+      }
     });
     dialog.querySelector("#activity-settings-button").addEventListener("click", () => {
       dialog.close();
@@ -792,8 +1034,30 @@ function openSettings() {
       updatePoints(0);
       renderProfile();
       savePreferences();
+      loadCollectionSchedule();
       dialog.close();
       notify("Local profile, settings, and points were reset.");
+    });
+    const surveyForm = dialog.querySelector("#survey-form");
+    const surveySummary = dialog.querySelector("#survey-summary");
+    loadSurveySummary(surveySummary);
+    surveyForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (!communitySession) {
+        notify("Survey submissions need the BinGo community service.");
+        return;
+      }
+      const ratings = Object.fromEntries(new FormData(surveyForm));
+      try {
+        await communityRequest("/api/survey", {
+          method: "POST",
+          body: Object.fromEntries(Object.entries(ratings).map(([key, value]) => [key, Number(value)]))
+        });
+        await loadSurveySummary(surveySummary);
+        notify("Thanks for helping us improve BinGo.");
+      } catch (error) {
+        notify(error.message);
+      }
     });
   });
 }
@@ -870,13 +1134,245 @@ document.querySelectorAll(".more-button").forEach(button => {
 renderProfile();
 savePreferences();
 
-function createDonationCard({ title, category, description, owner = "You", distance = "Nearby" }) {
+async function communityRequest(path, { method = "GET", body, authenticated = true } = {}) {
+  const headers = {};
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+  if (authenticated && communitySession?.token) {
+    headers.Authorization = `Bearer ${communitySession.token}`;
+  }
+  let response;
+  try {
+    response = await fetch(path, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store"
+    });
+  } catch (error) {
+    throw new Error("Community service is unreachable. Check your connection and BinGo server.");
+  }
+  if (!response.headers.get("content-type")?.includes("application/json")) {
+    throw new Error("Community service is not configured. Start the BinGo server to use listings and messages.");
+  }
+  const result = await response.json();
+  if (!response.ok) {
+    const error = new Error(result.error || "Community request failed.");
+    error.status = response.status;
+    throw error;
+  }
+  return result;
+}
+
+async function ensureCommunitySession() {
+  const storedSession = window.localStorage.getItem(sessionStorageKey);
+  if (storedSession) {
+    try {
+      communitySession = JSON.parse(storedSession);
+      await communityRequest("/api/exchanges");
+      await communityRequest("/api/session", {
+        method: "PATCH",
+        body: { neighborhood: preferences.neighborhood || "RS Puram" }
+      });
+      return;
+    } catch (error) {
+      if (error.status !== 401) {
+        communitySession = null;
+        throw error;
+      }
+      window.localStorage.removeItem(sessionStorageKey);
+    }
+  }
+  const session = await communityRequest("/api/session", {
+    method: "POST",
+    body: { neighborhood: preferences.neighborhood || "RS Puram" },
+    authenticated: false
+  });
+  communitySession = { token: session.token, userId: session.user_id };
+  window.localStorage.setItem(sessionStorageKey, JSON.stringify(communitySession));
+}
+
+function bytesToBase64(value) {
+  let binary = "";
+  new Uint8Array(value).forEach(byte => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+}
+
+function base64ToBytes(value) {
+  return Uint8Array.from(atob(value), character => character.charCodeAt(0));
+}
+
+function openEncryptionDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("bingo-encryption-keys", 1);
+    request.onupgradeneeded = () => request.result.createObjectStore("keys");
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("Could not open private-key storage."));
+  });
+}
+
+async function getStoredEncryptionKey(userId) {
+  const database = await openEncryptionDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction("keys", "readonly");
+    const request = transaction.objectStore("keys").get(userId);
+    request.onsuccess = () => {
+      database.close();
+      resolve(request.result || null);
+    };
+    request.onerror = () => {
+      database.close();
+      reject(request.error || new Error("Could not read the private encryption key."));
+    };
+  });
+}
+
+async function storeEncryptionKey(userId, keyRecord) {
+  const database = await openEncryptionDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction("keys", "readwrite");
+    transaction.objectStore("keys").put(keyRecord, userId);
+    transaction.oncomplete = () => {
+      database.close();
+      resolve();
+    };
+    transaction.onerror = () => {
+      database.close();
+      reject(transaction.error || new Error("Could not save the private encryption key."));
+    };
+  });
+}
+
+async function ensureEncryptionKey() {
+  if (!globalThis.crypto?.subtle || !globalThis.indexedDB) {
+    throw new Error("This browser cannot safely store end-to-end encryption keys.");
+  }
+  if (!communitySession) {
+    await ensureCommunitySession();
+  }
+  if (localEncryptionKey?.userId === communitySession.userId) {
+    return localEncryptionKey;
+  }
+
+  let keyRecord = await getStoredEncryptionKey(communitySession.userId);
+  if (!keyRecord) {
+    const pair = await crypto.subtle.generateKey(
+      { name: "ECDH", namedCurve: "P-256" },
+      false,
+      ["deriveKey"]
+    );
+    keyRecord = {
+      privateKey: pair.privateKey,
+      publicKey: bytesToBase64(await crypto.subtle.exportKey("raw", pair.publicKey))
+    };
+    await storeEncryptionKey(communitySession.userId, keyRecord);
+  }
+  await communityRequest("/api/session/encryption-key", {
+    method: "POST",
+    body: { public_key: keyRecord.publicKey }
+  });
+  localEncryptionKey = { ...keyRecord, userId: communitySession.userId };
+  return localEncryptionKey;
+}
+
+async function deriveConversationKey(privateKey, publicKey) {
+  const importedKey = await crypto.subtle.importKey(
+    "raw",
+    base64ToBytes(publicKey),
+    { name: "ECDH", namedCurve: "P-256" },
+    false,
+    []
+  );
+  return crypto.subtle.deriveKey(
+    { name: "ECDH", public: importedKey },
+    privateKey,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function encryptionFingerprint(publicKey) {
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", base64ToBytes(publicKey)));
+  const fingerprint = Array.from(digest, byte => byte.toString(16).padStart(2, "0")).join("");
+  return fingerprint.match(/.{1,4}/g).join(" ");
+}
+
+async function encryptExchangeMessage(message, key, exchangeId, senderId) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const additionalData = new TextEncoder().encode(`${exchangeId}:${senderId}`);
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv, additionalData },
+    key,
+    new TextEncoder().encode(message)
+  );
+  return {
+    protocol: "ECDH-P256-AES-256-GCM-v1",
+    iv: bytesToBase64(iv),
+    ciphertext: bytesToBase64(ciphertext)
+  };
+}
+
+async function decryptExchangeMessage(encrypted, key, exchangeId, senderId) {
+  const plaintext = await crypto.subtle.decrypt(
+    {
+      name: "AES-GCM",
+      iv: base64ToBytes(encrypted.iv),
+      additionalData: new TextEncoder().encode(`${exchangeId}:${senderId}`)
+    },
+    key,
+    base64ToBytes(encrypted.ciphertext)
+  );
+  return new TextDecoder().decode(plaintext);
+}
+
+async function compressItemPhoto(file) {
+  if (!file.type.startsWith("image/") || file.size > 12 * 1024 * 1024) {
+    throw new Error("Choose an image smaller than 12 MB.");
+  }
+  const source = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = source;
+    await image.decode();
+    const scale = Math.min(1, 640 / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.72));
+    if (!blob) {
+      throw new Error("Could not compress that image. Choose a different photo.");
+    }
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener("load", () => resolve(reader.result));
+      reader.addEventListener("error", () => reject(new Error("Could not read that photo.")));
+      reader.readAsDataURL(blob);
+    });
+  } finally {
+    URL.revokeObjectURL(source);
+  }
+}
+
+function createDonationCard({ listingId, title, category, description = "Shared by a neighbour", photoUrl, neighborhood = "Coimbatore", isOwner = false, requested = false }) {
   const card = document.createElement("article");
   card.className = "donation-card";
   card.dataset.category = category;
+  card.dataset.listingId = listingId;
 
   const photo = document.createElement("div");
   photo.className = `item-photo ${category === "Books" ? "photo-books" : category === "Home goods" ? "photo-chair" : "photo-toys"}`;
+  if (photoUrl) {
+    const image = document.createElement("img");
+    image.src = photoUrl;
+    image.alt = title;
+    image.loading = "lazy";
+    photo.append(image);
+  }
   const photoLabel = document.createElement("span");
   photoLabel.textContent = category.toUpperCase();
   photo.append(photoLabel);
@@ -894,22 +1390,332 @@ function createDonationCard({ title, category, description, owner = "You", dista
   footer.className = "item-footer";
   const ownerAvatar = document.createElement("span");
   ownerAvatar.className = "avatar tiny";
-  ownerAvatar.textContent = owner === "You" ? "AK" : "RM";
+  ownerAvatar.textContent = isOwner ? "You" : "NB";
   const ownerName = document.createElement("small");
-  ownerName.textContent = `${owner} · ${distance}`;
+  ownerName.textContent = neighborhood;
   const request = document.createElement("button");
   request.type = "button";
-  request.textContent = "Request";
+  request.textContent = isOwner ? "Your listing" : requested ? "Requested" : "Message giver";
+  request.disabled = isOwner || requested;
   request.addEventListener("click", () => {
-    request.textContent = "Requested";
-    request.disabled = true;
-    notify("Request sent. You’ll get a chat notification soon.");
+    startItemRequest(listingId, title, request);
   });
   footer.append(ownerAvatar, ownerName, request);
   details.append(tag, heading, copy, footer);
   card.append(photo, details);
   return card;
 }
+
+async function startItemRequest(listingId, title, button) {
+  if (!communitySession || !listingId) {
+    notify("Item requests are unavailable until the community service is connected.");
+    return;
+  }
+  button.disabled = true;
+  try {
+    const result = await communityRequest(`/api/items/${encodeURIComponent(listingId)}/requests`, {
+      method: "POST"
+    });
+    button.textContent = "Requested";
+    await openConversation(result.exchange_id, title);
+  } catch (error) {
+    button.disabled = false;
+    notify(error.message);
+  }
+}
+
+async function loadCommunityListings() {
+  const status = document.querySelector("#community-service-status");
+  const grid = document.querySelector(".donation-grid");
+  try {
+    await ensureCommunitySession();
+    const { items } = await communityRequest("/api/items");
+    grid.replaceChildren();
+    if (!items.length) {
+      const empty = document.createElement("p");
+      empty.className = "nearby-privacy";
+      empty.textContent = "No items yet. Be the first to share something useful.";
+      grid.append(empty);
+    }
+    items.forEach(item => {
+      grid.append(createDonationCard({
+        listingId: item.listing_id,
+        title: item.title,
+        category: item.category,
+        photoUrl: item.photo_data,
+        neighborhood: item.neighborhood,
+        isOwner: item.is_owner,
+        requested: item.requested
+      }));
+    });
+    status.textContent = "Community listings are live. Only neighbourhood-level locations are shown.";
+    await loadImpact();
+  } catch (error) {
+    status.textContent = `${error.message} Sample listings are for display only.`;
+    console.warn("BinGo community features are unavailable:", error);
+  }
+}
+
+async function renderMessages(exchangeId, messagesElement, conversationKey) {
+  const result = await communityRequest(`/api/exchanges/${encodeURIComponent(exchangeId)}/messages`);
+  messagesElement.replaceChildren();
+  for (const message of result.messages) {
+    const item = document.createElement("p");
+    item.className = message.sender_id === result.user_id ? "exchange-message own-message" : "exchange-message";
+    try {
+      const encrypted = JSON.parse(message.message);
+      if (!conversationKey || encrypted.protocol !== "ECDH-P256-AES-256-GCM-v1") {
+        item.textContent = "Encrypted message is unavailable until both participants enable secure messaging.";
+      } else {
+        item.textContent = await decryptExchangeMessage(
+          encrypted,
+          conversationKey,
+          exchangeId,
+          message.sender_id
+        );
+      }
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        item.textContent = "Legacy message omitted because it was not end-to-end encrypted.";
+      } else {
+        item.textContent = "Unable to decrypt this message on this device.";
+        console.error("BinGo could not decrypt an exchange message:", error);
+      }
+    }
+    messagesElement.append(item);
+  }
+  messagesElement.scrollTop = messagesElement.scrollHeight;
+}
+
+async function openConversation(exchangeId, itemTitle) {
+  const safeTitle = String(itemTitle).replace(/[&<>"']/g, character => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+  })[character]);
+  openDialog("Item messages", safeTitle, `
+    <div id="exchange-messages" class="exchange-messages" aria-live="polite"></div>
+    <form id="exchange-message-form" class="dialog-form">
+      <label>Message<textarea name="message" maxlength="500" required placeholder="Arrange a safe public pickup"></textarea></label>
+      <button class="primary-button" type="submit">Send message</button>
+    </form>
+    <p class="nearby-privacy" id="encryption-status" role="status">Preparing end-to-end encryption…</p>
+    <p class="nearby-privacy">Messages are encrypted on this device. Meet in a public place and avoid sharing home addresses or personal contact details.</p>
+    <button class="secondary-button" id="complete-exchange-button" type="button">Mark exchange complete</button>`, () => {
+    const messages = dialog.querySelector("#exchange-messages");
+    const form = dialog.querySelector("#exchange-message-form");
+    const submit = form.querySelector("button[type=submit]");
+    const encryptionStatus = dialog.querySelector("#encryption-status");
+    let conversationKey = null;
+    let preparingEncryption = false;
+    submit.disabled = true;
+    let refreshing = false;
+    const prepareEncryption = async () => {
+      if (preparingEncryption || conversationKey || !dialog.open) return;
+      preparingEncryption = true;
+      try {
+        const keyRecord = await ensureEncryptionKey();
+        const exchangeKeys = await communityRequest(
+          `/api/exchanges/${encodeURIComponent(exchangeId)}/keys`
+        );
+        if (!exchangeKeys.ready) {
+          encryptionStatus.textContent =
+            "Ask the other participant to open messages on their device to enable encryption.";
+          return;
+        }
+        const peerId = Object.keys(exchangeKeys.public_keys)
+          .find(userId => userId !== communitySession.userId);
+        if (!peerId) {
+          throw new Error("Could not find the other participant’s encryption key.");
+        }
+        conversationKey = await deriveConversationKey(
+          keyRecord.privateKey,
+          exchangeKeys.public_keys[peerId]
+        );
+        encryptionStatus.textContent =
+          `Encrypted on this device · verify peer fingerprint out of band: ${await encryptionFingerprint(exchangeKeys.public_keys[peerId])}`;
+        submit.disabled = false;
+      } catch (error) {
+        encryptionStatus.textContent = error.message;
+      } finally {
+        preparingEncryption = false;
+      }
+    };
+    const refresh = async () => {
+      if (refreshing || !dialog.open) return;
+      refreshing = true;
+      try {
+        await prepareEncryption();
+        await renderMessages(exchangeId, messages, conversationKey);
+      } catch (error) {
+        messages.textContent = error.message;
+      } finally {
+        refreshing = false;
+      }
+    };
+    const refreshTimer = window.setInterval(refresh, 5000);
+    dialog.addEventListener("close", () => window.clearInterval(refreshTimer), { once: true });
+    refresh();
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (!conversationKey) {
+        notify("Encrypted messaging is not ready yet.");
+        return;
+      }
+      submit.disabled = true;
+      try {
+        const encrypted = await encryptExchangeMessage(
+          form.elements.message.value.trim(),
+          conversationKey,
+          exchangeId,
+          communitySession.userId
+        );
+        await communityRequest(`/api/exchanges/${encodeURIComponent(exchangeId)}/messages`, {
+          method: "POST",
+          body: { encrypted }
+        });
+        form.reset();
+        await refresh();
+      } catch (error) {
+        notify(error.message);
+      } finally {
+        submit.disabled = !conversationKey;
+      }
+    });
+    dialog.querySelector("#complete-exchange-button").addEventListener("click", async event => {
+      event.currentTarget.disabled = true;
+      try {
+        const result = await communityRequest(`/api/exchanges/${encodeURIComponent(exchangeId)}`, { method: "PATCH" });
+        dialog.close();
+        notify(`Exchange complete · about ${result.diverted_kg.toFixed(1)} kg diverted.`);
+        await loadImpact();
+      } catch (error) {
+        event.currentTarget.disabled = false;
+        notify(error.message);
+      }
+    });
+  });
+}
+
+async function openExchanges() {
+  try {
+    await ensureCommunitySession();
+    await ensureEncryptionKey();
+    const { exchanges } = await communityRequest("/api/exchanges");
+    const content = document.createElement("div");
+    if (!exchanges.length) {
+      content.textContent = "No item conversations yet.";
+    } else {
+      exchanges.forEach(exchange => {
+        const row = document.createElement("article");
+        row.className = "exchange-listing";
+        const title = document.createElement("strong");
+        title.textContent = exchange.title;
+        const status = document.createElement("small");
+        status.textContent = `${exchange.other_person} · ${exchange.status}`;
+        const open = document.createElement("button");
+        open.className = "secondary-button";
+        open.type = "button";
+        open.textContent = "Open messages";
+        open.addEventListener("click", () => openConversation(exchange.exchange_id, exchange.title));
+        row.append(title, status, open);
+        content.append(row);
+      });
+    }
+    openDialog("Your messages", "Coordinate an item exchange in the app.", content.outerHTML);
+    dialog.querySelector(".dialog-body").replaceChildren(content);
+  } catch (error) {
+    notify(error.message);
+  }
+}
+
+async function loadImpact() {
+  if (!communitySession) return;
+  const impact = await communityRequest("/api/impact");
+  document.querySelector("#diverted-weight").textContent = impact.diverted_kg.toFixed(1);
+  document.querySelector("#completed-exchanges").textContent = String(impact.completed_exchanges || 0);
+}
+
+async function loadPlatformMetrics() {
+  const activeUsers = document.querySelector("#active-user-metric");
+  const costPerUser = document.querySelector("#cost-per-user-metric");
+  try {
+    const metrics = await communityRequest("/api/metrics", { authenticated: false });
+    activeUsers.textContent = String(metrics.active_users_30d);
+    costPerUser.textContent = metrics.cost_per_active_user === null
+      ? "Configure monthly bill"
+      : `₹${metrics.cost_per_active_user.toFixed(2)}`;
+  } catch (error) {
+    activeUsers.textContent = "Unavailable";
+    costPerUser.textContent = "Unavailable";
+    console.warn("BinGo platform metrics are unavailable:", error);
+  }
+}
+
+async function loadSurveySummary(element) {
+  try {
+    const survey = await communityRequest("/api/survey", { authenticated: false });
+    element.textContent = `${survey.response_count} of ${survey.target_responses} target responses collected. Average ratings (clarity, icons, layout): ${survey.averages.map(value => value ?? "—").join(" / ")}.`;
+  } catch (error) {
+    element.textContent = "Survey collection requires the BinGo server.";
+  }
+}
+
+async function enableTruckAlerts() {
+  const button = document.querySelector("#truck-alert-button");
+  if (!navigator.geolocation) {
+    notify("This device does not support GPS alerts.");
+    return;
+  }
+  if (!("Notification" in window)) {
+    notify("This browser does not support collection notifications.");
+    return;
+  }
+  button.disabled = true;
+  try {
+    const permission = await Notification.requestPermission();
+    navigator.geolocation.getCurrentPosition(position => {
+      userCoordinates = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      };
+      truckAlerted = false;
+      button.textContent = "Truck alerts enabled · within 500 m";
+      button.disabled = false;
+      if (currentTruckLocation) setTruckStatus(currentTruckLocation);
+      if (truckAlertWatch === null) {
+        truckAlertWatch = navigator.geolocation.watchPosition(nextPosition => {
+          userCoordinates = {
+            latitude: nextPosition.coords.latitude,
+            longitude: nextPosition.coords.longitude
+          };
+          if (currentTruckLocation) setTruckStatus(currentTruckLocation);
+        }, error => {
+          console.warn("BinGo could not refresh the local alert location:", error);
+          notify("Location updates stopped. Re-enable alerts to try again.");
+          button.textContent = "Enable truck alerts · within 500 m";
+          truckAlertWatch = null;
+        }, { enableHighAccuracy: false, maximumAge: 30000, timeout: 15000 });
+      }
+      if (permission !== "granted") {
+        if (!truckAlerted) {
+          notify("In-app alerts are enabled. Allow notifications for alerts outside the app.");
+        }
+      } else if (!truckAlerted) {
+        notify("Truck alerts enabled. Your location stays on this device.");
+      }
+    }, error => {
+      button.disabled = false;
+      const message = error.code === 1
+        ? "Location permission was denied. Allow it to enable truck alerts."
+        : "Could not read your location. Try again when GPS is available.";
+      notify(message);
+    }, { enableHighAccuracy: false, maximumAge: 30000, timeout: 15000 });
+  } catch (error) {
+    button.disabled = false;
+    notify(`Could not enable notifications: ${error.message}`);
+  }
+}
+
+document.querySelector("#truck-alert-button").addEventListener("click", enableTruckAlerts);
 
 document.querySelectorAll(".donation-card").forEach(card => {
   card.dataset.category = card.querySelector(".tag").textContent.trim();
@@ -928,55 +1734,83 @@ document.querySelectorAll(".donation-card").forEach(card => {
   });
   favorite.replaceWith(favoriteButton);
   card.querySelector(".item-footer button").addEventListener("click", event => {
-    const button = event.currentTarget;
-    button.textContent = "Requested";
-    button.disabled = true;
-    notify("Request sent. You’ll get a chat notification soon.");
+    event.currentTarget.disabled = true;
+    notify("This is a sample listing. Live requests are available for community listings.");
+    event.currentTarget.disabled = false;
   });
 });
+
+document.querySelector("#open-exchanges-button").addEventListener("click", openExchanges);
+loadCommunityListings();
 
 document.querySelector("#post-item").addEventListener("click", () => {
   openDialog("Give an item", "Share something useful with a neighbour.", `
     <form id="donation-form" class="dialog-form">
+      <label>Photo<input name="photo" class="input" type="file" accept="image/*" capture="environment" required></label>
       <label>Item name<input name="title" class="input" required maxlength="60" placeholder="e.g. A set of storybooks"></label>
       <label>Category<select name="category" class="input" required><option>Books</option><option>Home goods</option><option>Electronics</option><option>Kids</option></select></label>
-      <label>Condition and details<textarea name="description" required maxlength="180" placeholder="Describe the item and how it can be collected"></textarea></label>
-      <button class="primary-button" type="submit">Share with the community</button>
+      <p class="nearby-privacy">Your listing shows only your neighbourhood, never your home address. Photo is resized before upload.</p>
+      <button class="primary-button" type="submit">Share item</button>
     </form>`, () => {
     const form = dialog.querySelector("#donation-form");
-    form.addEventListener("submit", event => {
+    form.addEventListener("submit", async event => {
       event.preventDefault();
-      const listing = Object.fromEntries(new FormData(form));
-      const card = createDonationCard(listing);
-      document.querySelector(".donation-grid").prepend(card);
-      const allItems = document.querySelector(".category-pills .pill");
-      setActivePill(allItems);
-      filterDonations("All items");
-      dialog.close();
-      updatePoints(10);
-      notify("Your item is now on the community board. +10 eco points");
+      const photoFile = form.elements.photo.files[0];
+      if (!photoFile) {
+        form.elements.photo.setCustomValidity("Choose a photo to list your item.");
+        form.elements.photo.reportValidity();
+        return;
+      }
+
+      if (!communitySession) {
+        notify("Item listings need the BinGo community service. Please try again when connected.");
+        return;
+      }
+      const submit = form.querySelector("button[type=submit]");
+      submit.disabled = true;
+      try {
+        const photoData = await compressItemPhoto(photoFile);
+        await communityRequest("/api/items", {
+          method: "POST",
+          body: {
+            title: form.elements.title.value,
+            category: form.elements.category.value,
+            photo_data: photoData
+          }
+        });
+        dialog.close();
+        updatePoints(10);
+        notify("Your item is now on the community board. +10 eco points");
+        await loadCommunityListings();
+      } catch (error) {
+        notify(error.message);
+      } finally {
+        submit.disabled = false;
+      }
     });
   });
 });
 
-const reportUpload = document.querySelector(".upload-box");
-const photoInput = document.createElement("input");
-photoInput.type = "file";
-photoInput.accept = "image/*";
-photoInput.capture = "environment";
-photoInput.hidden = true;
-photoInput.setAttribute("aria-label", "Choose a photo of the reported dumping");
-reportUpload.append(photoInput);
-reportUpload.querySelector(".secondary-button").addEventListener("click", () => photoInput.click());
-photoInput.addEventListener("change", () => {
-  const file = photoInput.files?.[0];
-  if (file) {
-    reportUpload.querySelector("small").textContent = file.name;
-    notify("Photo attached to your report.");
-  }
-});
+document.querySelector("#view-report .upload-box").remove();
+const reportLocationLabel = document.querySelector("#view-report .form-fields > label");
+reportLocationLabel.replaceChildren();
+const reportLocationTitle = document.createElement("span");
+reportLocationTitle.textContent = "Choose the incident location on the map";
+const reportMap = document.createElement("div");
+reportMap.className = "map report-map-frame maplibre-map";
+reportMap.setAttribute("role", "region");
+reportMap.setAttribute("aria-label", "Select an approximate illegal dumping report location");
+const reportLocationStatus = document.createElement("small");
+reportLocationStatus.id = "report-location-status";
+reportLocationStatus.textContent = "Tap the map to place a pin. The saved position is rounded for privacy.";
+reportLocationLabel.classList.add("report-location-field");
+reportLocationLabel.append(reportLocationTitle, reportMap, reportLocationStatus);
 
 document.querySelector(".submit-report").addEventListener("click", () => {
+  if (!selectedReportLocation) {
+    notify("Tap the map to choose where the dumping was seen.");
+    return;
+  }
   const description = document.querySelector(".report-card textarea");
   if (!description.value.trim()) {
     description.setCustomValidity("Add a short description before submitting your report.");
@@ -985,28 +1819,53 @@ document.querySelector(".submit-report").addEventListener("click", () => {
     return;
   }
 
-  const activity = document.querySelector(".activity-list");
-  const row = document.createElement("div");
-  row.className = "activity-row";
-  const activityIcon = document.createElement("span");
-  activityIcon.className = "activity-icon peach";
-  activityIcon.textContent = "⚑";
-  const activityContent = document.createElement("div");
-  const activityTitle = document.createElement("strong");
-  activityTitle.textContent = "Dumping report submitted";
-  const activityDescription = document.createElement("small");
-  activityDescription.textContent = `${description.value.trim()} · Just now`;
-  activityContent.append(activityTitle, activityDescription);
-  const activityPoints = document.createElement("b");
-  activityPoints.textContent = "+50";
-  row.append(activityIcon, activityContent, activityPoints);
-  activity.prepend(row);
-  const activityCount = document.querySelector(".nav-count");
-  activityCount.textContent = String(Number(activityCount.textContent) + 1);
-  description.value = "";
-  updatePoints(50);
-  notify("Report submitted — thank you for keeping Coimbatore clean! +50 points");
-  window.setTimeout(() => showView("activity", { updateHistory: true }), 1200);
+  const submitButton = document.querySelector(".submit-report");
+  submitButton.disabled = true;
+  (async () => {
+    try {
+      await ensureCommunitySession();
+      await communityRequest("/api/reports", {
+        method: "POST",
+        body: {
+          category: reportCategory,
+          description: description.value.trim(),
+          latitude: selectedReportLocation.latitude,
+          longitude: selectedReportLocation.longitude
+        }
+      });
+      const activity = document.querySelector(".activity-list");
+      const row = document.createElement("div");
+      row.className = "activity-row";
+      const activityIcon = document.createElement("span");
+      activityIcon.className = "activity-icon peach";
+      activityIcon.textContent = "⚑";
+      const activityContent = document.createElement("div");
+      const activityTitle = document.createElement("strong");
+      activityTitle.textContent = "Dumping report submitted";
+      const activityDescription = document.createElement("small");
+      activityDescription.textContent = `${reportCategory} · Just now`;
+      activityContent.append(activityTitle, activityDescription);
+      const activityPoints = document.createElement("b");
+      activityPoints.textContent = "+50";
+      row.append(activityIcon, activityContent, activityPoints);
+      activity.prepend(row);
+      const activityCount = document.querySelector(".nav-count");
+      activityCount.textContent = String(Number(activityCount.textContent) + 1);
+      description.value = "";
+      selectedReportLocation = null;
+      reportLocationMarker?.remove();
+      document.querySelector("#report-location-status").textContent =
+        "Tap the map to place another pin. The saved position is rounded for privacy.";
+      updatePoints(50);
+      notify("Report submitted as an unverified community hotspot. +50 points");
+      await refreshDumpingReportMarkers();
+      window.setTimeout(() => showView("activity", { updateHistory: true }), 1200);
+    } catch (error) {
+      notify(error.message);
+    } finally {
+      submitButton.disabled = false;
+    }
+  })();
 });
 
 const quizItems = [
@@ -1107,6 +1966,8 @@ window.addEventListener("appinstalled", () => {
 
 initialiseNearbyDirectory();
 refreshTruckLocations();
+loadCollectionSchedule();
+initialiseMaps();
 window.setInterval(refreshTruckLocations, 12000);
 window.addEventListener("resize", () => {
   updateTruckMarkers(currentTruckLocation);

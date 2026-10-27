@@ -1,4 +1,4 @@
-const CACHE_NAME = "bingo-shell-v2";
+const CACHE_NAME = "bingo-shell-v4";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -28,7 +28,13 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   const { request } = event;
-  if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) {
+  const requestUrl = new URL(request.url);
+  if (request.method !== "GET" || requestUrl.origin !== self.location.origin) {
+    return;
+  }
+
+  if (requestUrl.pathname.startsWith("/api/")) {
+    event.respondWith(fetch(request, { cache: "no-store" }));
     return;
   }
 

@@ -636,9 +636,22 @@ textarea:focus-visible {
   background: #e8eee5;
 }
 
+.maplibre-map[data-map-status="offline"]::before {
+  position: absolute;
+  z-index: 4;
+  inset: auto 12px 12px;
+  display: block;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #fff;
+  color: #52665c;
+  content: "Map unavailable. Check your internet connection.";
+  font-size: 11px;
+  box-shadow: var(--shadow);
+}
+
 .maplibre-map::before,
 .maplibre-map::after {
-  display: none;
   content: none;
 }
 
@@ -647,13 +660,285 @@ textarea:focus-visible {
   left: 0;
 }
 
+.map-place-marker {
+  display: grid;
+  width: 30px;
+  min-height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #2f925a;
+  color: #fff;
+  font-size: 15px;
+  box-shadow: 0 2px 8px #17332c66;
+}
+
+.round-button {
+  width: 44px;
+  height: 44px;
+}
+
+.map-place-marker.ewaste {
+  background: #398bb0;
+}
+
+.map-place-marker.bins {
+  background: #2f925a;
+}
+
+.maplibregl-popup-content p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.item-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.item-photo > span {
+  position: relative;
+  z-index: 1;
+}
+
+.donation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.exchange-messages {
+  display: grid;
+  gap: 8px;
+  max-height: 36vh;
+  overflow: auto;
+  padding: 10px;
+  background: #f5f8f4;
+  border-radius: 10px;
+}
+
+.exchange-message {
+  justify-self: start;
+  max-width: 88%;
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 12px 12px 12px 3px;
+  background: #fff;
+  overflow-wrap: anywhere;
+}
+
+.exchange-message.own-message {
+  justify-self: end;
+  border-radius: 12px 12px 3px 12px;
+  background: #e3f2df;
+}
+
+.exchange-listing {
+  display: grid;
+  gap: 7px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.exchange-listing small {
+  color: var(--muted);
+}
+
+.platform-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 20px;
+  margin: 18px 0;
+  padding: 20px 24px;
+}
+
+.platform-metrics > div,
+.platform-metrics > small {
+  grid-column: 1 / -1;
+}
+
+.platform-metrics h2 {
+  margin: 4px 0;
+  font: 700 18px "Plus Jakarta Sans";
+}
+
+.platform-metrics p {
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.platform-metrics p strong {
+  color: var(--green);
+  font-size: 16px;
+}
+
+.platform-metrics > small {
+  color: var(--muted);
+}
+
+.dialog-form input[type="file"] {
+  min-height: 48px;
+}
+
+.dialog-form input:not([type="checkbox"]),
+.dialog-form select,
+.dialog-form textarea {
+  font-size: 16px;
+}
+
+.nav-item,
+.mobile-nav-item,
+.primary-button,
+.secondary-button,
+.filter-button,
+.round-button,
+.icon-button {
+  min-height: 44px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #1c7758;
+  outline-offset: 3px;
+}
+
+body {
+  line-height: 1.45;
+}
+
+.muted {
+  font-size: 14px;
+}
+
+.eyebrow {
+  font-size: 11px;
+}
+
+.dialog-form textarea,
+.dialog-form input,
+.dialog-form select,
+button,
+a {
+  touch-action: manipulation;
+}
+
 .dark-mode .nearby-distance-note,
 .dark-mode .nearby-kind {
   background: #294333;
 }
 
 @media (max-width: 650px) {
+  .donation-actions {
+    width: 100%;
+  }
+
+  .donation-actions > button {
+    flex: 1;
+    min-height: 44px;
+  }
+
+  .platform-metrics {
+    grid-template-columns: 1fr;
+  }
+
   .nearby-place-results {
     max-height: 50vh;
+  }
+}
+
+.hotspot-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 14px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.hotspot-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hotspot-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.hotspot-swatch.mixed,
+.dumping-hotspot-marker.mixed {
+  background: #d97835;
+}
+
+.hotspot-swatch.plastic,
+.dumping-hotspot-marker.plastic {
+  background: #2f80b7;
+}
+
+.hotspot-swatch.construction,
+.dumping-hotspot-marker.construction {
+  background: #8b5aa6;
+}
+
+.dumping-hotspot-marker {
+  display: grid;
+  width: 30px;
+  height: 34px;
+  place-items: center;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  box-shadow: 0 2px 8px #17332c66;
+}
+
+.report-location-marker {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #c34639;
+  box-shadow: 0 1px 8px #17332c99;
+}
+
+.report-location-field {
+  display: grid;
+  gap: 8px;
+}
+
+.report-map-frame {
+  width: 100%;
+  height: 230px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: crosshair;
+}
+
+.report-location-field small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.collection-card .arrival a {
+  color: var(--green);
+}
+
+@media (max-width: 650px) {
+  .report-map-frame {
+    height: 210px;
   }
 }
