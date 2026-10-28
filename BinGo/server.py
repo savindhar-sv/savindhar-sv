@@ -27,7 +27,8 @@ MAX_BODY_BYTES = 400 * 1024
 LIVE_SECONDS = 90
 MAX_POSITION_AGE_SECONDS = 24 * 60 * 60
 TRUCK_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 -]{0,31}$")
-ITEM_CATEGORIES = {"Books", "Home goods", "Electronics", "Kids"}
+ITEM_CATEGORIES = {"Books", "Clothes", "E-Waste", "Furniture", "Home goods", "Electronics", "Kids"}
+DROP_OFF_CATEGORIES = {"mcc", "dry_kiosk", "dustbin"}
 REPORT_CATEGORIES = {"Mixed waste", "Plastic", "Construction"}
 COLLECTION_DAYS = {
     "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
@@ -36,6 +37,9 @@ P256_FIELD = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF
 P256_CURVE_B = 0x5AC635D8AA3A93E7B3EBBD55769886BC651D06B0CC53B0F63BCE3C3E27D2604B
 DIVERTED_KG_BY_CATEGORY = {
     "Books": 2.0,
+    "Clothes": 1.0,
+    "E-Waste": 1.5,
+    "Furniture": 3.0,
     "Home goods": 3.0,
     "Electronics": 1.5,
     "Kids": 1.0,
@@ -54,6 +58,8 @@ def initialise_database(database_path):
                 latitude REAL NOT NULL,
                 longitude REAL NOT NULL,
                 accuracy_m REAL,
+                neighborhood TEXT,
+                estimated_arrival_at INTEGER,
                 updated_at INTEGER NOT NULL
             )
             """
@@ -123,6 +129,15 @@ def initialise_database(database_path):
                 ON dumping_reports(created_at);
             """
         )
+        truck_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(truck_locations)")
+        }
+        if "neighborhood" not in truck_columns:
+            connection.execute("ALTER TABLE truck_locations ADD COLUMN neighborhood TEXT")
+        if "estimated_arrival_at" not in truck_columns:
+            connection.execute(
+                "ALTER TABLE truck_locations ADD COLUMN estimated_arrival_at INTEGER"
+            )
         connection.commit()
 
 
@@ -245,6 +260,9 @@ class BingoRequestHandler(SimpleHTTPRequestHandler):
             return
         if route == "/api/trucks":
             self.send_trucks()
+            return
+        if route == "/api/dropoffs":
+            self.send_verified_dropoffs()
             return
         if route == "/api/reports":
             self.send_dumping_reports()
@@ -378,6 +396,62 @@ class BingoRequestHandler(SimpleHTTPRequestHandler):
                 """
             ).fetchall()
         self.send_json(200, {"reports": [dict(row) for row in rows]})
+
+    def send_verified_dropoffs(self):
+        source_path = Path(os.environ.get(
+            "BINGO_DROPOFFS_FILE",
+            APP_DIRECTORY / "data" / "verified_dropoffs.json",
+        ))
+        if not source_path.is_file():
+            self.send_json(200, {"status": "not_configured", "dropoffs": []})
+            return
+        try:
+            with source_path.open("r", encoding="utf-8") as source_file:
+                payload = json.load(source_file)
+        except (OSError, json.JSONDecodeError) as error:
+            sys.stderr.write("BinGo verified drop-off file could not be read: %s\n" % error)
+            self.send_json(500, {"error": "The configured verified drop-off file could not be read."})
+            return
+        entries = payload.get("dropoffs") if isinstance(payload, dict) else None
+        if not isinstance(entries, list):
+            self.send_json(500, {"error": "The drop-off file must contain a dropoffs list."})
+            return
+        dropoffs = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                self.send_json(500, {"error": "Each verified drop-off must be an object."})
+                return
+            latitude = entry.get("latitude")
+            longitude = entry.get("longitude")
+            if (
+                not isinstance(entry.get("name"), str)
+                or not entry["name"].strip()
+                or not isinstance(entry.get("category"), str)
+                or entry.get("category") not in DROP_OFF_CATEGORIES
+                or isinstance(latitude, bool)
+                or not isinstance(latitude, (int, float))
+                or not math.isfinite(latitude)
+                or not 10.8 <= latitude <= 11.25
+                or isinstance(longitude, bool)
+                or not isinstance(longitude, (int, float))
+                or not math.isfinite(longitude)
+                or not 76.75 <= longitude <= 77.25
+                or not isinstance(entry.get("source_url"), str)
+                or not entry["source_url"].startswith("https://")
+                or not isinstance(entry.get("verified_at"), str)
+                or not entry["verified_at"].strip()
+            ):
+                self.send_json(500, {"error": "A verified drop-off entry is incomplete or invalid."})
+                return
+            dropoffs.append({
+                "name": entry["name"].strip(),
+                "category": entry["category"],
+                "latitude": float(latitude),
+                "longitude": float(longitude),
+                "source_url": entry["source_url"],
+                "verified_at": entry["verified_at"].strip(),
+            })
+        self.send_json(200, {"status": "configured", "dropoffs": dropoffs})
 
     def create_dumping_report(self):
         user_id = self.require_user()
@@ -818,9 +892,13 @@ class BingoRequestHandler(SimpleHTTPRequestHandler):
                 "SELECT COUNT(*) FROM exchanges WHERE status = 'completed' AND (requester_id = ? OR owner_id = ?)",
                 (user_id, user_id),
             ).fetchone()[0]
+            community_total = connection.execute(
+                "SELECT COALESCE(SUM(diverted_kg), 0) FROM exchanges WHERE status = 'completed'"
+            ).fetchone()[0]
         self.send_json(200, {
             "diverted_kg": round(total, 1),
             "completed_exchanges": completed,
+            "community_diverted_kg": round(community_total, 1),
             "estimated": True,
             "method": "category-average-per-completed-item",
         })
@@ -897,7 +975,8 @@ class BingoRequestHandler(SimpleHTTPRequestHandler):
             connection.row_factory = sqlite3.Row
             rows = connection.execute(
                 """
-                SELECT truck_id, latitude, longitude, accuracy_m, updated_at
+                SELECT truck_id, latitude, longitude, accuracy_m, neighborhood,
+                       estimated_arrival_at, updated_at
                 FROM truck_locations
                 WHERE updated_at >= ?
                 ORDER BY updated_at DESC
@@ -913,6 +992,8 @@ class BingoRequestHandler(SimpleHTTPRequestHandler):
                 "latitude": row["latitude"],
                 "longitude": row["longitude"],
                 "accuracy_m": row["accuracy_m"],
+                "neighborhood": row["neighborhood"],
+                "estimated_arrival_at": row["estimated_arrival_at"],
                 "updated_at": row["updated_at"],
                 "age_seconds": age_seconds,
                 "status": "live" if age_seconds <= LIVE_SECONDS else "stale",
@@ -955,6 +1036,8 @@ class BingoRequestHandler(SimpleHTTPRequestHandler):
         latitude = data.get("latitude")
         longitude = data.get("longitude")
         accuracy = data.get("accuracy_m")
+        estimated_arrival_at = data.get("estimated_arrival_at")
+        neighborhood = data.get("neighborhood")
         if (
             isinstance(latitude, bool)
             or not isinstance(latitude, (int, float))
@@ -975,21 +1058,48 @@ class BingoRequestHandler(SimpleHTTPRequestHandler):
         ):
             self.send_json(400, {"error": "GPS accuracy must be between 0 and 10,000 metres."})
             return
+        if estimated_arrival_at is not None and (
+            isinstance(estimated_arrival_at, bool)
+            or not isinstance(estimated_arrival_at, int)
+            or not int(time.time()) < estimated_arrival_at <= int(time.time()) + 24 * 60 * 60
+        ):
+            self.send_json(400, {"error": "Estimated arrival must be a future timestamp within 24 hours."})
+            return
+        if neighborhood is not None and (
+            not isinstance(neighborhood, str)
+            or neighborhood not in NEIGHBORHOODS
+        ):
+            self.send_json(400, {"error": "Choose a supported collection neighbourhood."})
+            return
+        if estimated_arrival_at is not None and not neighborhood:
+            self.send_json(400, {"error": "Select the neighbourhood for the estimated arrival."})
+            return
 
         truck_id = self.parse_truck_location()
         updated_at = int(time.time())
         with closing(sqlite3.connect(str(self.database_path), timeout=5)) as connection:
             connection.execute(
                 """
-                INSERT INTO truck_locations (truck_id, latitude, longitude, accuracy_m, updated_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO truck_locations
+                    (truck_id, latitude, longitude, accuracy_m, neighborhood, estimated_arrival_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(truck_id) DO UPDATE SET
                     latitude = excluded.latitude,
                     longitude = excluded.longitude,
                     accuracy_m = excluded.accuracy_m,
+                    neighborhood = excluded.neighborhood,
+                    estimated_arrival_at = excluded.estimated_arrival_at,
                     updated_at = excluded.updated_at
                 """,
-                (truck_id, float(latitude), float(longitude), float(accuracy) if accuracy is not None else None, updated_at),
+                (
+                    truck_id,
+                    float(latitude),
+                    float(longitude),
+                    float(accuracy) if accuracy is not None else None,
+                    neighborhood,
+                    estimated_arrival_at,
+                    updated_at,
+                ),
             )
             connection.commit()
         self.send_json(200, {"status": "ok", "truck_id": truck_id, "updated_at": updated_at})

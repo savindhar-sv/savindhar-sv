@@ -54,6 +54,29 @@ Collection schedules are loaded from `data/collection_schedule.json` (or the fil
 
 The configured schedule is shown on the dashboard with its source link and verification date; operators are responsible for confirming the source and keeping it current. The official [CCMC solid-waste page](https://ccmc.gov.in/index.php/administration/solid-waste-management) currently lists service providers rather than ward pickup days, and its [waste-truck monitoring page](https://ccmc.gov.in/index.php/createpage/waste-truck-monitoring) says it is still under development. No official local timetable could therefore be populated without guessing. Explore shows color-coded, crowdsourced dumping reports alongside nearby drop-off locations. Report pins are explicitly marked unverified; the server rounds reported coordinates to 3 decimal places (about 100 metres) and does not expose report descriptions or reporter identities on the map. Reports are not an official CCMC complaint channel. Explore also includes neighbourhood-level map searches for CCMC MCCs, community bins, and environmental volunteer groups. **Use my GPS** requests browser permission only after the user taps it (GPS requires HTTPS or localhost). Nearby distances are approximate straight-line estimates and GPS is not sent to map-search links. Volunteering interest opens an email draft and is not an online NGO registration.
 
+Verified official drop-off pins are optional and are not pre-populated. To configure them, create `data/verified_dropoffs.json` (or set `BINGO_DROPOFFS_FILE`) with this structure:
+
+```json
+{
+  "dropoffs": [
+    {
+      "name": "Example municipal centre",
+      "category": "mcc",
+      "latitude": 11.014,
+      "longitude": 76.968,
+      "source_url": "https://www.ccmc.gov.in/",
+      "verified_at": "2026-10-27"
+    }
+  ]
+}
+```
+
+Allowed categories are `mcc`, `dry_kiosk`, and `dustbin`. Entries must be in the Coimbatore bounding area, include an HTTPS source URL and verification date, and must be checked by the operator against an authoritative source before publication. When no verified file is present, the API reports `not_configured`; the map must not be presented as containing official pins.
+
+The giveaway feed supports Clothes, Books, E-Waste, and Furniture, as well as legacy categories for existing records. Its `<1 km` and `<3 km` filters are **approximate distances between fixed neighborhood centers**, not item coordinates, walking routes, or GPS-derived distances. These prototype neighborhood centers are approximate UI reference points, not CCMC/OSM-verified boundaries. Listing locations remain neighborhood-only, and resident GPS is neither uploaded nor used by this filter. Diversion totals are illustrative category averages for completed exchanges (Books 2.0 kg, Clothes/Kids 1.0 kg, E-Waste/Electronics 1.5 kg, Furniture/Home goods 3.0 kg), not measured weights.
+
+An authorized driver can publish a neighborhood-specific estimated arrival with the truck location using `estimated_arrival_at` (a future Unix timestamp in seconds, up to 24 hours ahead) and `neighborhood`. The dashboard displays that estimate only when it matches the resident's selected neighborhood. Residents must enable alerts and grant browser permission; the page polls while open and can issue a foreground notification as the ETA enters the 15-minute window. This is not background push and cannot guarantee an alert if the app/browser is closed, suspended, or offline.
+
 ### Included prototype flows
 
 - Collection dashboard with route status, eco points, impact chart, and community board

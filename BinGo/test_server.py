@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 import threading
+import time
 import unittest
 from contextlib import closing
 from http.client import HTTPConnection
@@ -51,7 +52,14 @@ class TruckLocationAPITest(unittest.TestCase):
                 self.assertIn("error", result)
 
     def test_driver_location_is_published_and_can_be_removed(self):
-        body = json.dumps({"latitude": 11.004, "longitude": 76.961, "accuracy_m": 8.5})
+        arrival = int(time.time()) + 600
+        body = json.dumps({
+            "latitude": 11.004,
+            "longitude": 76.961,
+            "accuracy_m": 8.5,
+            "estimated_arrival_at": arrival,
+            "neighborhood": "RS Puram",
+        })
         path = "/api/trucks/TN%2037%20AB%204812/location"
         status, posted = self.request("POST", path, body, "test-driver-token")
         self.assertEqual(status, 200)
@@ -62,6 +70,8 @@ class TruckLocationAPITest(unittest.TestCase):
         self.assertEqual(result["live_seconds"], LIVE_SECONDS)
         self.assertEqual(result["trucks"][0]["latitude"], 11.004)
         self.assertEqual(result["trucks"][0]["accuracy_m"], 8.5)
+        self.assertEqual(result["trucks"][0]["estimated_arrival_at"], arrival)
+        self.assertEqual(result["trucks"][0]["neighborhood"], "RS Puram")
         self.assertEqual(result["trucks"][0]["status"], "live")
 
         status, removed = self.request("DELETE", path, token="test-driver-token")
@@ -176,6 +186,42 @@ class TruckLocationAPITest(unittest.TestCase):
         self.assertEqual(result["status"], "configured")
         self.assertEqual(result["schedules"][0]["weekdays"], ["Monday", "Thursday"])
         self.assertEqual(result["schedules"][0]["source_url"], "https://www.ccmc.gov.in/")
+
+    def test_official_dropoffs_require_verified_source_and_support_map_categories(self):
+        dropoff_file = Path(self.temp_directory.name) / "dropoffs.json"
+        with patch.dict(os.environ, {"BINGO_DROPOFFS_FILE": str(dropoff_file)}):
+            status, result = self.request("GET", "/api/dropoffs")
+            self.assertEqual(status, 200)
+            self.assertEqual(result, {"status": "not_configured", "dropoffs": []})
+
+            dropoff_file.write_text(json.dumps({
+                "dropoffs": [{
+                    "name": "Sample MCC",
+                    "category": "mcc",
+                    "latitude": 11.014,
+                    "longitude": 76.968,
+                    "source_url": "https://www.ccmc.gov.in/",
+                    "verified_at": "2026-10-28",
+                }]
+            }), encoding="utf-8")
+            status, result = self.request("GET", "/api/dropoffs")
+        self.assertEqual(status, 200)
+        self.assertEqual(result["status"], "configured")
+        self.assertEqual(result["dropoffs"][0]["category"], "mcc")
+        self.assertEqual(result["dropoffs"][0]["source_url"], "https://www.ccmc.gov.in/")
+
+    def test_truck_arrival_requires_supported_neighborhood_and_future_timestamp(self):
+        path = "/api/trucks/Truck-ETA/location"
+        invalid_payloads = (
+            {"latitude": 11.0, "longitude": 76.9, "estimated_arrival_at": 1, "neighborhood": "RS Puram"},
+            {"latitude": 11.0, "longitude": 76.9, "estimated_arrival_at": 1},
+        )
+        for payload in invalid_payloads:
+            status, result = self.request(
+                "POST", path, json.dumps(payload), "test-driver-token"
+            )
+            self.assertEqual(status, 400)
+            self.assertIn("error", result)
 
     def test_server_refuses_to_start_without_driver_token(self):
         with self.assertRaisesRegex(ValueError, "BINGO_DRIVER_TOKEN"):
@@ -308,6 +354,7 @@ class TruckLocationAPITest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(impact["diverted_kg"], 2.0)
         self.assertEqual(impact["completed_exchanges"], 1)
+        self.assertEqual(impact["community_diverted_kg"], 2.0)
 
     def test_survey_aggregates_and_monthly_cost_per_active_user(self):
         status, user = self.request("POST", "/api/session", json.dumps({}))

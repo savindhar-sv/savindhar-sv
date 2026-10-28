@@ -942,3 +942,124 @@ a {
     height: 210px;
   }
 }
+
+.language-toggle {
+  min-width: 58px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.community-impact-pill {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border: 1px solid #d9ead8;
+  border-radius: 11px;
+  background: #eef7ee;
+  color: #536c5c;
+  font-size: 11px;
+}
+
+.community-impact-pill strong {
+  color: var(--green);
+  font-size: 17px;
+}
+
+.giveaway-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 220px);
+  align-items: end;
+  gap: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.giveaway-filters .category-pills {
+  grid-column: 1 / -1;
+}
+
+.giveaway-filters .nearby-filter-label,
+.giveaway-filters .nearby-filter {
+  margin: 0;
+}
+
+.giveaway-filters .nearby-privacy {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.safe-pickup-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin: 10px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.safe-pickup-suggestions button {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #f4f8f4;
+  color: var(--green);
+  font-size: 11px;
+}
+
+.verified-dropoff-marker {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 16px;
+  box-shadow: 0 2px 8px #17332c66;
+}
+
+.verified-dropoff-marker.mcc,
+.hotspot-swatch.mcc {
+  background: #1d7f51;
+}
+
+.verified-dropoff-marker.dry_kiosk,
+.hotspot-swatch.dry_kiosk {
+  background: #2874a5;
+}
+
+.verified-dropoff-marker.dustbin,
+.hotspot-swatch.dustbin {
+  background: #7a5a9e;
+}
+
+.maplibregl-popup-content a {
+  color: var(--green);
+}
+
+.dark-mode .language-toggle {
+  background: #14231c;
+  color: #9bd19c;
+  border-color: var(--line);
+}
+
+@media (max-width: 650px) {
+  .giveaway-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .giveaway-filters .category-pills,
+  .giveaway-filters .nearby-privacy {
+    grid-column: auto;
+  }
+}
