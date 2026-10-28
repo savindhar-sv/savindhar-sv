@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0f6b4f">
+  <meta http-equiv="refresh" content="0; url=/savindhar-sv/BinGo/">
   <title>BinGo — Waste, sorted.</title>
   <style>
     :root {
@@ -42,17 +43,8 @@
 <body>
   <main>
     <h1>Opening BinGo…</h1>
-    <p>If you are not redirected, use the button below to open the app.</p>
+    <p>If this page does not redirect, open the app using the button.</p>
     <a id="app-link" href="/savindhar-sv/BinGo/">Open BinGo</a>
   </main>
-  <script>
-    const siteRoot = new URL(window.location.href);
-    if (!siteRoot.pathname.endsWith("/")) {
-      siteRoot.pathname += "/";
-    }
-    const appUrl = new URL("BinGo/", siteRoot);
-    document.querySelector("#app-link").href = appUrl.href;
-    window.location.replace(appUrl.href);
-  </script>
 </body>
 </html>
