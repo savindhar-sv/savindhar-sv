@@ -399,6 +399,9 @@ class TruckLocationAPITest(unittest.TestCase):
                 "title": "Neighbourhood listing",
                 "category": "Books",
                 "photo_data": "data:image/jpeg;base64,ZmFrZQ==",
+                "neighborhood": "12 Example Street, Coimbatore",
+                "latitude": 11.0140672,
+                "longitude": 76.9683931,
             }),
             user["token"],
         )
@@ -406,6 +409,9 @@ class TruckLocationAPITest(unittest.TestCase):
         _, items = self.request("GET", "/api/items")
         created_item = next(item for item in items["items"] if item["listing_id"] == listing["listing_id"])
         self.assertEqual(created_item["neighborhood"], "Race Course")
+        self.assertNotIn("12 Example Street", json.dumps(created_item))
+        self.assertNotIn("latitude", created_item)
+        self.assertNotIn("longitude", created_item)
 
     def test_exchange_conversations_are_private_to_participants(self):
         status, owner = self.request("POST", "/api/session", json.dumps({}))

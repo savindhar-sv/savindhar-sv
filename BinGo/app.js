@@ -113,6 +113,7 @@ const tamilTranslations = {
   "Send message": "செய்தி அனுப்பு",
   "Suggest a public meeting place:": "பொது சந்திப்பு இடத்தைப் பரிந்துரைக்கவும்:",
   "Public park": "பொது பூங்கா",
+  "Community center": "சமூக மையம்",
   "CCMC ward office": "CCMC வார்டு அலுவலகம்",
   "Other public place": "வேறு பொது இடம்",
   "Messages are encrypted on this device. Meet in a public place and avoid sharing home addresses or personal contact details.": "செய்திகள் இந்தச் சாதனத்தில் குறியாக்கம் செய்யப்படுகின்றன. பொது இடத்தில் சந்திக்கவும்; வீட்டு முகவரி அல்லது தனிப்பட்ட தொடர்பு விவரங்களைப் பகிர வேண்டாம்.",
@@ -1847,19 +1848,28 @@ async function openConversation(exchangeId, itemTitle) {
     </form>
     <div class="safe-pickup-suggestions" aria-label="Safe public pickup suggestions">
       <span>Suggest a public meeting place:</span>
-      <button type="button" data-meeting-suggestion="a nearby public park">Public park</button>
-      <button type="button" data-meeting-suggestion="a CCMC ward office in our neighbourhood">CCMC ward office</button>
-      <button type="button" data-meeting-suggestion="another busy public place in our neighbourhood">Other public place</button>
+      <button type="button" data-meeting-suggestion="park">Public park</button>
+      <button type="button" data-meeting-suggestion="community-center">Community center</button>
+      <button type="button" data-meeting-suggestion="ward-office">CCMC ward office</button>
+      <button type="button" data-meeting-suggestion="other-public-place">Other public place</button>
     </div>
     <p class="nearby-privacy" id="encryption-status" role="status">Preparing end-to-end encryption…</p>
-    <p class="nearby-privacy">Messages are encrypted on this device. Meet in a public place and avoid sharing home addresses or personal contact details.</p>
+    <p class="nearby-privacy">Messages are encrypted on this device. Listings show only a neighborhood, not a street address. Meet in a busy, well-lit public place during open hours; never share a home address.</p>
     <button class="secondary-button" id="complete-exchange-button" type="button">Mark exchange complete</button>`, () => {
     const messages = dialog.querySelector("#exchange-messages");
     const form = dialog.querySelector("#exchange-message-form");
     dialog.querySelectorAll("[data-meeting-suggestion]").forEach(button => {
       button.addEventListener("click", () => {
+        const neighborhood = preferences.neighborhood || defaultPreferences.neighborhood;
+        const suggestion = {
+          park: `a busy public park in ${neighborhood} during daylight`,
+          "community-center": `a public community center in ${neighborhood} during opening hours`,
+          "ward-office": `the CCMC ward office serving ${neighborhood} during opening hours`,
+          "other-public-place": `another busy, well-lit public place in ${neighborhood} during opening hours`
+        }[button.dataset.meetingSuggestion];
+        if (!suggestion) return;
         form.elements.message.value =
-          `Would you be comfortable meeting at ${button.dataset.meetingSuggestion}?`;
+          `Would you be comfortable meeting at ${suggestion}? Let's agree on the exact public spot here; I won't share home addresses.`;
         form.elements.message.focus();
       });
     });
@@ -2107,7 +2117,7 @@ document.querySelector("#post-item").addEventListener("click", () => {
       <label>Photo<input name="photo" class="input" type="file" accept="image/*" capture="environment" required></label>
       <label>Item name<input name="title" class="input" required maxlength="60" placeholder="e.g. A set of storybooks"></label>
       <label>Category<select name="category" class="input" required><option>Clothes</option><option>Books</option><option>E-Waste</option><option>Furniture</option></select></label>
-      <p class="nearby-privacy">Your listing shows only your neighbourhood, never your home address. Photo is resized before upload.</p>
+      <p class="nearby-privacy">Your listing shows only your selected neighborhood (for example, RS Puram). We do not request your street address or attach your GPS location. Photo is resized before upload.</p>
       <button class="primary-button" type="submit">Share item</button>
     </form>`, () => {
     const form = dialog.querySelector("#donation-form");
