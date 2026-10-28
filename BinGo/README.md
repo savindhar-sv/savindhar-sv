@@ -27,7 +27,7 @@ No build step or package installation is required. For the API-backed item excha
 BINGO_DRIVER_TOKEN=replace-with-a-private-random-token PORT=8000 /usr/bin/python3 server.py
 ```
 
-Then visit `http://localhost:8000`. The driver token is for trusted vehicle devices only; never put it in browser code or share it with users. The default database is `data/bingo.sqlite3`; set `BINGO_DATABASE` to select another path. The default server binding is loopback-only.
+Then visit `http://localhost:8000`. To serve HTTPS directly, set both `BINGO_TLS_CERTFILE` and `BINGO_TLS_KEYFILE` to paths for a certificate and matching private key; the server will then accept HTTPS on that port. For local testing, use a self-signed certificate with `localhost` and `127.0.0.1` subject alternative names (browsers will show a trust warning until you explicitly trust the certificate). For a public site, use a certificate issued for the public hostname by a trusted CA. The driver token is for trusted vehicle devices only; never put it in browser code or share it with users. The default database is `data/bingo.sqlite3`; set `BINGO_DATABASE` to select another path. The default server binding is loopback-only.
 
 For a public deployment, put the app behind a TLS-terminating HTTPS reverse proxy, bind the Python server only to a private interface, and set `BINGO_TRUST_PROXY=1` only when that proxy overwrites `X-Forwarded-Proto`. The app redirects public HTTP page requests to HTTPS and rejects public HTTP API writes. Set `BINGO_MONTHLY_PLATFORM_COST` to the monthly hosting/database/bandwidth bill in INR to calculate cost per active user. User access is free; no billing flow is included.
 

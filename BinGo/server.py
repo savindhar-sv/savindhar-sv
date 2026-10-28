@@ -9,6 +9,7 @@ import os
 import re
 import secrets
 import sqlite3
+import ssl
 import sys
 import time
 import hashlib
@@ -1043,8 +1044,28 @@ def main():
         print("PORT must be a number between 1 and 65535.", file=sys.stderr)
         raise SystemExit(1)
 
+    certificate_file = os.environ.get("BINGO_TLS_CERTFILE")
+    private_key_file = os.environ.get("BINGO_TLS_KEYFILE")
+    if bool(certificate_file) != bool(private_key_file):
+        print(
+            "Set both BINGO_TLS_CERTFILE and BINGO_TLS_KEYFILE to enable HTTPS.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
     server = create_server(host, port, token)
-    print("BinGo server listening on {}:{}.".format(host, port), flush=True)
+    scheme = "http"
+    if certificate_file and private_key_file:
+        tls_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        try:
+            tls_context.load_cert_chain(certificate_file, private_key_file)
+        except (OSError, ssl.SSLError) as error:
+            server.server_close()
+            print("BinGo could not load the configured TLS certificate: %s" % error, file=sys.stderr)
+            raise SystemExit(1)
+        server.socket = tls_context.wrap_socket(server.socket, server_side=True)
+        scheme = "https"
+    print("BinGo server listening on {}://{}:{}.".format(scheme, host, port), flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
