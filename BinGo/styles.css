@@ -1015,6 +1015,34 @@ a {
   font-size: 11px;
 }
 
+.exchange-pickup-facility {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f8fbf8;
+}
+
+.exchange-pickup-facility > label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.exchange-pickup-facility .input {
+  width: 100%;
+  margin: 0;
+}
+
+.exchange-pickup-details > p {
+  margin: 0;
+}
+
+.dark-mode .exchange-pickup-facility {
+  background: #14231c;
+}
+
 .verified-dropoff-marker {
   display: grid;
   width: 32px;

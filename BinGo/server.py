@@ -440,17 +440,27 @@ class BingoRequestHandler(SimpleHTTPRequestHandler):
                 or not entry["source_url"].startswith("https://")
                 or not isinstance(entry.get("verified_at"), str)
                 or not entry["verified_at"].strip()
+                or (
+                    entry.get("phone") is not None
+                    and (
+                        not isinstance(entry["phone"], str)
+                        or not re.fullmatch(r"\+[1-9][0-9]{7,14}", entry["phone"])
+                    )
+                )
             ):
                 self.send_json(500, {"error": "A verified drop-off entry is incomplete or invalid."})
                 return
-            dropoffs.append({
+            dropoff = {
                 "name": entry["name"].strip(),
                 "category": entry["category"],
                 "latitude": float(latitude),
                 "longitude": float(longitude),
                 "source_url": entry["source_url"],
                 "verified_at": entry["verified_at"].strip(),
-            })
+            }
+            if entry.get("phone") is not None:
+                dropoff["phone"] = entry["phone"]
+            dropoffs.append(dropoff)
         self.send_json(200, {"status": "configured", "dropoffs": dropoffs})
 
     def create_dumping_report(self):

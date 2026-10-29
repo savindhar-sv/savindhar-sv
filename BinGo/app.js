@@ -116,6 +116,12 @@ const tamilTranslations = {
   "Community center": "சமூக மையம்",
   "CCMC ward office": "CCMC வார்டு அலுவலகம்",
   "Other public place": "வேறு பொது இடம்",
+  "Verified pickup facility": "சரிபார்க்கப்பட்ட பொருள் ஒப்படைப்பு மையம்",
+  "Choose a verified public pickup point": "சரிபார்க்கப்பட்ட பொது ஒப்படைப்பு இடத்தைத் தேர்ந்தெடுக்கவும்",
+  "Suggest this public facility": "இந்தப் பொது மையத்தைப் பரிந்துரைக்கவும்",
+  "Open directions": "வழியைத் திற",
+  "Call facility": "மையத்தை அழை",
+  "No verified public pickup points are configured.": "சரிபார்க்கப்பட்ட பொது ஒப்படைப்பு இடங்கள் அமைக்கப்படவில்லை.",
   "Messages are encrypted on this device. Meet in a public place and avoid sharing home addresses or personal contact details.": "செய்திகள் இந்தச் சாதனத்தில் குறியாக்கம் செய்யப்படுகின்றன. பொது இடத்தில் சந்திக்கவும்; வீட்டு முகவரி அல்லது தனிப்பட்ட தொடர்பு விவரங்களைப் பகிர வேண்டாம்.",
   "Mark exchange complete": "பரிமாற்றம் முடிந்தது எனக் குறி"
 };
@@ -689,6 +695,13 @@ function renderNearbyPlaces(category = "all") {
       joinLink.href = `mailto:savindhar@manchesters.in?subject=${encodeURIComponent(`Volunteer with ${place.name}`)}&body=${encodeURIComponent("Hello, I would like information about joining a waste-management or environmental volunteer group in Coimbatore.")}`;
       joinLink.textContent = "Ask about joining ↗";
       actions.append(joinLink);
+    }
+    if (place.official && place.phone) {
+      const callLink = document.createElement("a");
+      callLink.className = "secondary-button";
+      callLink.href = `tel:${place.phone}`;
+      callLink.textContent = "Call facility";
+      actions.append(callLink);
     }
 
     card.append(header, address, details, distance, actions);
@@ -1837,6 +1850,7 @@ async function renderMessages(exchangeId, messagesElement, conversationKey) {
 }
 
 async function openConversation(exchangeId, itemTitle) {
+  await loadVerifiedDropoffs();
   const safeTitle = String(itemTitle).replace(/[&<>"']/g, character => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
   })[character]);
@@ -1846,6 +1860,13 @@ async function openConversation(exchangeId, itemTitle) {
       <label>Message<textarea name="message" maxlength="500" required placeholder="Arrange a safe public pickup"></textarea></label>
       <button class="primary-button" type="submit">Send message</button>
     </form>
+    <section class="exchange-pickup-facility" aria-labelledby="exchange-pickup-heading">
+      <label id="exchange-pickup-heading" for="exchange-pickup-select">Verified pickup facility</label>
+      <select class="input" id="exchange-pickup-select">
+        <option value="">Choose a verified public pickup point</option>
+      </select>
+      <div class="exchange-pickup-details" id="exchange-pickup-details" aria-live="polite"></div>
+    </section>
     <div class="safe-pickup-suggestions" aria-label="Safe public pickup suggestions">
       <span>Suggest a public meeting place:</span>
       <button type="button" data-meeting-suggestion="park">Public park</button>
@@ -1858,6 +1879,53 @@ async function openConversation(exchangeId, itemTitle) {
     <button class="secondary-button" id="complete-exchange-button" type="button">Mark exchange complete</button>`, () => {
     const messages = dialog.querySelector("#exchange-messages");
     const form = dialog.querySelector("#exchange-message-form");
+    const pickupSelect = dialog.querySelector("#exchange-pickup-select");
+    const pickupDetails = dialog.querySelector("#exchange-pickup-details");
+    verifiedDropoffs.forEach((facility, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = `${facility.name} · ${dropoffCategoryLabel(facility.category)}`;
+      pickupSelect.append(option);
+    });
+    if (!verifiedDropoffs.length) {
+      pickupDetails.textContent = "No verified public pickup points are configured.";
+    }
+    pickupSelect.addEventListener("change", () => {
+      pickupDetails.replaceChildren();
+      if (!pickupSelect.value) return;
+      const facility = verifiedDropoffs[Number(pickupSelect.value)];
+      if (!facility) return;
+
+      const verification = document.createElement("p");
+      verification.className = "nearby-privacy";
+      verification.textContent = `${dropoffCategoryLabel(facility.category)} · source verified ${facility.verified_at}. Confirm opening hours before meeting.`;
+      const actions = document.createElement("div");
+      actions.className = "nearby-actions";
+      const suggest = document.createElement("button");
+      suggest.type = "button";
+      suggest.className = "secondary-button";
+      suggest.textContent = "Suggest this public facility";
+      suggest.addEventListener("click", () => {
+        form.elements.message.value =
+          `Would you be comfortable meeting at ${facility.name}, a verified public pickup facility in Coimbatore? Please confirm the time here; I won't share home addresses.`;
+        form.elements.message.focus();
+      });
+      const directions = document.createElement("a");
+      directions.className = "secondary-button";
+      directions.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${facility.latitude},${facility.longitude}`)}`;
+      directions.target = "_blank";
+      directions.rel = "noopener noreferrer";
+      directions.textContent = "Open directions";
+      actions.append(suggest, directions);
+      if (facility.phone) {
+        const call = document.createElement("a");
+        call.className = "primary-button";
+        call.href = `tel:${facility.phone}`;
+        call.textContent = "Call facility";
+        actions.append(call);
+      }
+      pickupDetails.append(verification, actions);
+    });
     dialog.querySelectorAll("[data-meeting-suggestion]").forEach(button => {
       button.addEventListener("click", () => {
         const neighborhood = preferences.neighborhood || defaultPreferences.neighborhood;

@@ -43,6 +43,12 @@ For a public deployment, put the app behind a TLS-terminating HTTPS reverse prox
 
 The GitHub Pages custom domain is `bingowaste.in` (configured by the repository-root `CNAME`). At the domain registrar, point the apex (`@`) to GitHub Pages with A records `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, and `185.199.111.153`, and AAAA records `2606:50c0:8000::153`, `2606:50c0:8001::153`, `2606:50c0:8002::153`, and `2606:50c0:8003::153`. Remove existing conflicting apex A/AAAA records. Optionally point `www` to `savindhar-sv.github.io` with a CNAME record. Enable **Enforce HTTPS** in the repository's Pages settings after DNS verification and certificate provisioning complete. DNS changes are made at the registrar; committing this configuration alone does not change registrar DNS.
 
+### Supabase cloud database setup
+
+The Supabase schema migration is in `supabase/migrations/20261029173000_bingo_cloud_data.sql`. To create the tables in your Supabase project, open **SQL Editor**, paste and run the migration, then enable **Anonymous Sign-Ins** under Authentication settings so the app can associate a listing with an authenticated user. The schema covers neighborhood-only profiles, verified collection schedules, municipal drop-off map pins, current truck locations, and item listings. Listing photos use a private `listing-photos` Storage bucket. Row-level security lets users read only their own profile, forces listings to use the user's profile neighborhood, and reserves schedule/map/truck writes for trusted server-side credentials.
+
+The migration does not provision a Supabase project, add schedule/drop-off records, or connect the running app to Supabase. The app's current API still uses its Python/SQLite backend. To connect it, configure the Supabase project URL and **publishable/anon key** in the app and implement the client/server integration; never put the `service_role` key in browser code or commit it. Do not upload household GPS points or street addresses: profiles and item listings store only a neighborhood. Add only authoritative, verified CCMC schedules and map-pin coordinates.
+
 On a supported browser, choose **Install app** to add BinGo to your device. On iPhone or iPad, open the site in Safari and choose **Add to Home Screen**. The static app shell is about 153 KiB (157 KB) before browser/runtime overhead, well below the 35 MB target. The responsive layout adapts to narrow phone viewports. The service worker caches only the static shell; maps and community APIs need a connection, while API responses are deliberately never cached.
 
 The Explore and dashboard panels use MapLibre maps centered near `11.0140672, 76.9683931` in Coimbatore. MapLibre and map tiles are CDN-loaded. Truck locations refresh every 12 seconds while the app is open. **Enable truck alerts** asks for location permission after a tap, keeps the resident's exact coordinates on-device, and issues an in-app/browser notification when the truck is within 500 metres. Background delivery while the app is closed requires a separate push-notification service and is not included.
@@ -76,6 +82,7 @@ Verified official drop-off pins are optional and are not pre-populated. To confi
       "category": "mcc",
       "latitude": 11.014,
       "longitude": 76.968,
+      "phone": "+914221234567",
       "source_url": "https://www.ccmc.gov.in/",
       "verified_at": "2026-10-27"
     }
@@ -83,7 +90,7 @@ Verified official drop-off pins are optional and are not pre-populated. To confi
 }
 ```
 
-Allowed categories are `mcc`, `dry_kiosk`, and `dustbin`. Entries must be in the Coimbatore bounding area, include an HTTPS source URL and verification date, and must be checked by the operator against an authoritative source before publication. When no verified file is present, the API reports `not_configured`; the map must not be presented as containing official pins.
+Allowed categories are `mcc`, `dry_kiosk`, and `dustbin`. Entries must be in the Coimbatore bounding area, include an HTTPS source URL and verification date, and must be checked by the operator against an authoritative source before publication. The optional `phone` must be an internationally formatted `+` number and must also be verified by the operator. Configured facilities appear in the existing end-to-end encrypted user exchange chat as meetup suggestions with map directions; a **Call facility** link appears only when a verified facility phone is present. The chat is between the exchange participants, not a direct chat with facility staff. When no verified file is present, the API reports `not_configured`; the map must not be presented as containing official pins.
 
 The giveaway feed supports Clothes, Books, E-Waste, and Furniture, as well as legacy categories for existing records. Listings take their location from the account's supported neighborhood selection; client-supplied addresses or coordinates are ignored. The API returns the neighborhood, not a street address or resident coordinates. Users should still avoid putting addresses or contact details in item titles, photos, or encrypted messages. Its `<1 km` and `<3 km` filters are **approximate distances between fixed neighborhood centers**, not item coordinates, walking routes, or GPS-derived distances. These prototype neighborhood centers are approximate UI reference points, not CCMC/OSM-verified boundaries. Listing locations remain neighborhood-only, and resident GPS is neither uploaded nor used by this filter. Diversion totals are illustrative category averages for completed exchanges (Books 2.0 kg, Clothes/Kids 1.0 kg, E-Waste/Electronics 1.5 kg, Furniture/Home goods 3.0 kg), not measured weights.
 

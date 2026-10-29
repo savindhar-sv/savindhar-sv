@@ -202,6 +202,7 @@ class TruckLocationAPITest(unittest.TestCase):
                     "longitude": 76.968,
                     "source_url": "https://www.ccmc.gov.in/",
                     "verified_at": "2026-10-28",
+                    "phone": "+914222345678",
                 }]
             }), encoding="utf-8")
             status, result = self.request("GET", "/api/dropoffs")
@@ -209,6 +210,23 @@ class TruckLocationAPITest(unittest.TestCase):
         self.assertEqual(result["status"], "configured")
         self.assertEqual(result["dropoffs"][0]["category"], "mcc")
         self.assertEqual(result["dropoffs"][0]["source_url"], "https://www.ccmc.gov.in/")
+        self.assertEqual(result["dropoffs"][0]["phone"], "+914222345678")
+
+        with patch.dict(os.environ, {"BINGO_DROPOFFS_FILE": str(dropoff_file)}):
+            dropoff_file.write_text(json.dumps({
+                "dropoffs": [{
+                    "name": "Sample MCC",
+                    "category": "mcc",
+                    "latitude": 11.014,
+                    "longitude": 76.968,
+                    "source_url": "https://www.ccmc.gov.in/",
+                    "verified_at": "2026-10-28",
+                    "phone": "not-a-phone-number",
+                }]
+            }), encoding="utf-8")
+            status, result = self.request("GET", "/api/dropoffs")
+        self.assertEqual(status, 500)
+        self.assertIn("error", result)
 
     def test_truck_arrival_requires_supported_neighborhood_and_future_timestamp(self):
         path = "/api/trucks/Truck-ETA/location"
