@@ -1,18 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
-  <meta http-equiv="refresh" content="0; url=BinGo/">
-  <meta name="theme-color" content="#0f6b4f">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f6b4f" />
+  <meta name="description" content="A cleaner Coimbatore starts in your neighbourhood. Track collections, find recycling centres, donate useful items, and earn eco points with BinGo." />
   <title>BinGo — Waste, sorted.</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="BinGo" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main>
-    <h1>Opening BinGo…</h1>
-    <p>If this page does not redirect, open the app using the button.</p>
-    <a href="BinGo/">Open BinGo</a>
-  </main>
+  <div class="app-shell">
+    <aside class="sidebar" id="app-sidebar">
+      <div class="brand"><span class="brand-mark">B</span><span>bin<span class="brand-accent">go</span></span></div>
+      <p class="sidebar-label">Your neighbourhood</p>
+      <button class="location-pill"><span class="pin">⌖</span><span><strong>RS Puram</strong><small>Coimbatore, TN</small></span><span class="chevron">⌄</span></button>
+      <nav class="main-nav" aria-label="Main navigation">
+        <button class="nav-item active" data-view="home"><span>⌂</span> Home</button>
+        <button class="nav-item" data-view="explore"><span>⌖</span> Explore map</button>
+        <button class="nav-item" data-view="donate"><span>↗</span> Give &amp; get</button>
+        <button class="nav-item" data-view="guide"><span>✦</span> Waste guide</button>
+      </nav>
+      <button class="sidebar-label activity-shortcut" data-view="activity" type="button">Your activity</button>
+      <nav class="main-nav">
+        <button class="nav-item" data-view="activity"><span>◷</span> Activity <b class="nav-count">3</b></button>
+        <button class="nav-item" data-view="rewards"><span>♢</span> Eco rewards</button>
+        <button class="nav-item" data-view="admin"><span>▦</span> Admin console</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="mini-profile">
+          <button class="profile-button profile-main" id="sidebar-profile-button" type="button" aria-label="Open profile settings">
+            <span class="avatar profile-initials">AK</span>
+            <span class="profile-summary"><strong class="profile-name">Ananya Krishnan</strong><small><span class="profile-points">1,240</span> eco points</small></span>
+          </button>
+          <button class="profile-more" id="profile-menu-button" type="button" aria-label="More profile actions" aria-haspopup="dialog">•••</button>
+        </div>
+        <button class="nav-item" id="settings-button" type="button"><span>⚙</span> Settings</button>
+        <a class="help-card" href="mailto:savindhar@manchesters.in?subject=BinGo%20app%20help">
+          <span class="help-icon">?</span><span><strong>Need help?</strong><small>savindhar@manchesters.in</small></span><span class="help-arrow" aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="topbar">
+        <button class="mobile-menu" aria-label="Open menu" aria-expanded="false" aria-controls="app-sidebar">☰</button>
+        <div class="mobile-brand">bin<span>go</span></div>
+        <div class="topbar-actions"><button class="language-toggle" id="language-toggle" type="button" aria-label="Switch language">தமிழ்</button><button class="install-button" hidden>Install app</button><button class="icon-button notification-button" aria-label="Notifications">♧<i></i></button><button class="avatar small profile-button profile-initials" id="header-profile-button" type="button" aria-label="Open profile settings">AK</button></div>
+      </header>
+
+      <div id="view-home" class="view active-view">
+        <section class="welcome-row"><div><p class="eyebrow" id="today-date"></p><h1>Good morning, <span class="greeting-name">Ananya</span> <span>✳</span></h1><p class="muted">Small actions make a cleaner Coimbatore.</p><div class="community-impact-pill" aria-live="polite"><strong><span id="community-diverted-weight">0.0</span> kg</strong><span>Estimated community waste kept from Vellalore</span></div></div><div class="points-pill"><span>♢</span><div><small>YOUR ECO POINTS</small><strong><span class="points-total">1,240</span> <em>↗ 12%</em></strong></div></div></section>
+        <section class="hero-grid">
+          <article class="collection-card card"><div class="card-heading"><div><p class="eyebrow">TODAY’S COLLECTION</p><h2>Waste pickup</h2></div><span class="status-badge">Schedule needed</span></div><div class="collection-main"><div class="bin-illustration"><div class="bin-lid"></div><div class="bin-body"><span>♻</span></div></div><div class="arrival"><p class="muted">Next collection</p><strong>Not set</strong><p class="muted">A confirmed ward schedule is not connected yet.</p></div></div><div class="progress-label"><span>Live route</span><strong>Waiting for truck GPS</strong></div><div class="progress"><span style="width:0%"></span></div><button class="text-button" id="truck-alert-button" type="button">Enable alerts · 15 min ETA / 500 m</button><button class="text-button" data-view="explore">Track collection truck <span>→</span></button></article>
+          <article class="map-card card"><div class="map-top"><div><p class="eyebrow">LIVE NEAR YOU</p><h2>Collection in progress</h2></div><button class="round-button" id="share-gps-button" type="button" aria-label="Share live truck GPS">↗</button></div><div class="map map-live maplibre-map" role="region" aria-label="Live collection map near RS Puram, Coimbatore"></div><div class="map-footer"><span class="truck-dot"></span><span class="truck-status-copy">Truck TN 37 AB 4812 · connecting…</span><a class="arrow-button map-open-link" href="https://www.google.com/maps/@11.0140672,76.9683931,13.85z" target="_blank" rel="noopener noreferrer" aria-label="Open this map in Google Maps">↗</a></div></article>
+        </section>
+        <section class="section-head"><div><p class="eyebrow">QUICK ACTIONS</p><h2>How can we help today?</h2></div><button class="see-all">See all <span>→</span></button></section>
+        <section class="quick-grid">
+          <button class="quick-card green" data-view="explore"><span class="quick-icon">⌖</span><strong>Find a drop-off</strong><small>Bins, centres &amp; NGOs</small><span class="quick-arrow">↗</span></button>
+          <button class="quick-card peach" data-view="report"><span class="quick-icon">⚑</span><strong>Report dumping</strong><small>Help keep our streets clean</small><span class="quick-arrow">↗</span></button>
+          <button class="quick-card lavender" data-view="donate"><span class="quick-icon">♧</span><strong>Give an item</strong><small>Someone nearby needs it</small><span class="quick-arrow">↗</span></button>
+          <button class="quick-card blue" data-view="guide"><span class="quick-icon">✦</span><strong>Sort smarter</strong><small>Learn in under 3 minutes</small><span class="quick-arrow">↗</span></button>
+        </section>
+        <section class="lower-grid"><article class="card progress-card"><div class="section-head compact"><div><p class="eyebrow">YOUR IMPACT</p><h2>This month</h2></div><button class="more-button" data-menu="impact" type="button" aria-label="Impact options" aria-haspopup="dialog">•••</button></div><div class="impact-stats"><div><strong><span id="diverted-weight">0.0</span><span>kg</span></strong><small>Estimated landfill diversion</small></div><div><strong id="completed-exchanges">0</strong><small>Completed item exchanges</small></div><div><strong>04</strong><small>Reports resolved</small></div></div><p class="nearby-privacy">Weight is an estimate based on category averages for completed exchanges.</p><div class="chart" aria-label="Weekly waste diversion chart"><i style="height:34%"></i><i style="height:48%"></i><i style="height:42%"></i><i class="today" style="height:72%"></i><i style="height:60%"></i><i style="height:84%"></i><i style="height:52%"></i></div><div class="chart-labels"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div></article><article class="card community-card"><div class="section-head compact"><div><p class="eyebrow">AROUND YOU</p><h2>Community board</h2></div><button class="more-button" data-menu="community" type="button" aria-label="Community board options" aria-haspopup="dialog">•••</button></div><div class="community-item"><span class="community-avatar yellow">S</span><div><strong>Clean-up drive this Sunday</strong><small>RS Puram Residents · 24 joined</small></div><button class="join-button">Join</button></div><div class="community-item"><span class="community-avatar pink">N</span><div><strong>Need cardboard boxes</strong><small>Posted by Nila · 2 hours ago</small></div><button class="text-button">View</button></div><div class="community-item"><span class="community-avatar sky">C</span><div><strong>Free compost workshop</strong><small>Green Coimbatore · 18 spots left</small></div><button class="text-button">View</button></div></article></section>
+      </div>
+
+      <div id="view-explore" class="view"><section class="page-title"><div><p class="eyebrow">DISCOVER NEARBY</p><h1>Explore your map</h1><p class="muted">Interactive map · Coimbatore</p></div><a class="filter-button map-external-link" href="https://www.google.com/maps/@11.0140672,76.9683931,13.85z" target="_blank" rel="noopener noreferrer">Open in Google Maps ↗</a></section><div class="explore-layout"><div class="large-map card"><div class="map-search"><span>⌖ Map centre: 11.0140672, 76.9683931</span></div><div class="map large-map-frame maplibre-map" role="region" aria-label="Explore map centered near RS Puram, Coimbatore"></div></div><aside class="place-list card"><div class="list-header"><strong>Nearby places · verify on map</strong><a class="sort-button" href="https://www.google.com/maps/search/recycling+centres+near+11.0140672,76.9683931" target="_blank" rel="noopener noreferrer">Search ↗</a></div><div class="place selected"><span class="place-icon green-marker">♻</span><div><strong>RS Puram Community Bin</strong><small>Mixed recycling · Open 24/7</small><em>0.4 km away</em></div><span>›</span></div><div class="place"><span class="place-icon blue-marker">♧</span><div><strong>Recykal E-waste Centre</strong><small>Electronics &amp; batteries</small><em>1.1 km away</em></div><span>›</span></div><div class="place"><span class="place-icon orange-marker">▣</span><div><strong>Green Nest Compost Hub</strong><small>Wet waste · 8am–6pm</small><em>1.6 km away</em></div><span>›</span></div><div class="place"><span class="place-icon pink-marker">♥</span><div><strong>Coimbatore Cares NGO</strong><small>Donation drop-off</small><em>2.2 km away</em></div><span>›</span></aside></div></div>
+
+      <div id="view-donate" class="view"><section class="page-title"><div><p class="eyebrow">CIRCULAR COMMUNITY</p><h1>Give things a second life</h1><p class="muted">Pass on what you no longer need to someone nearby.</p></div><div class="donation-actions"><button class="secondary-button" id="open-exchanges-button" type="button">Messages</button><button class="primary-button" id="post-item">＋ Give an item</button></div></section><p id="community-service-status" class="nearby-privacy" role="status">Connecting to the community service…</p><div class="giveaway-filters"><div class="category-pills"><button class="pill active" data-category="all">All items</button><button class="pill" data-category="Clothes">Clothes</button><button class="pill" data-category="Books">Books</button><button class="pill" data-category="E-Waste">E-Waste</button><button class="pill" data-category="Furniture">Furniture</button></div><label class="nearby-filter-label" for="donation-radius-filter">Approximate distance</label><select class="input nearby-filter" id="donation-radius-filter"><option value="all">All neighbourhoods</option><option value="1">Under 1 km</option><option value="3">Under 3 km</option></select><p class="nearby-privacy">Distance is estimated between neighborhood centers; exact addresses and GPS are not shared.</p></div><div class="donation-grid"><article class="donation-card"><div class="item-photo photo-books"><span>BOOKS</span><b>♡</b></div><div class="item-details"><span class="tag">Books</span><h3>Engineering textbooks</h3><p>Used, but in great condition · 3 books</p><div class="item-footer"><span class="avatar tiny">RM</span><small>Raghav · Nearby</small><button>Request</button></div></div></article><article class="donation-card"><div class="item-photo photo-chair"><span>FURNITURE</span><b>♡</b></div><div class="item-details"><span class="tag">Home goods</span><h3>Study chair</h3><p>Lightly used · Pickup available</p><div class="item-footer"><span class="avatar tiny pink-avatar">PS</span><small>Priya · Nearby</small><button>Request</button></div></div></article><article class="donation-card"><div class="item-photo photo-toys"><span>TOYS</span><b>♡</b></div><div class="item-details"><span class="tag">Kids</span><h3>Building blocks set</h3><p>Like new · 120 pieces</p><div class="item-footer"><span class="avatar tiny blue-avatar">DK</span><small>Deepak · Nearby</small><button>Request</button></div></div></article></div></div>
+
+      <div id="view-guide" class="view"><section class="page-title"><div><p class="eyebrow">LEARN &amp; SORT</p><h1>Waste, made simple</h1><p class="muted">Know what goes where. Earn points as you learn.</p></div><div class="streak-badge">♨ <strong>4 day streak</strong></div></section><div class="guide-hero card"><div><span class="tag">QUICK LESSON · 3 MIN</span><h2>What’s in your bin?</h2><p>Sort 5 everyday items correctly and earn <strong>+50 eco points</strong>.</p><button class="primary-button" id="start-quiz">Start sorting <span>→</span></button></div><div class="sorting-visual"><div class="floating-item item-apple">●</div><div class="floating-item item-bottle">▥</div><div class="floating-item item-can">◉</div><div class="guide-bin wet">WET</div><div class="guide-bin dry">DRY</div></div></div><div class="section-head"><div><p class="eyebrow">BROWSE CATEGORIES</p><h2>Find your waste type</h2></div></div><div class="waste-grid"><button class="waste-card wet-bg"><span>●</span><strong>Wet waste</strong><small>Food &amp; garden</small></button><button class="waste-card dry-bg"><span>▤</span><strong>Dry waste</strong><small>Paper &amp; packaging</small></button><button class="waste-card e-bg"><span>⌁</span><strong>E-waste</strong><small>Batteries &amp; devices</small></button><button class="waste-card haz-bg"><span>♧</span><strong>Special waste</strong><small>Glass &amp; medical</small></button></div></div>
+
+      <div id="view-report" class="view"><section class="page-title"><div><p class="eyebrow">MAKE A DIFFERENCE</p><h1>Report illegal dumping</h1><p class="muted">Your report helps our city respond faster.</p></div></section><div class="report-card card"><div class="upload-box"><span>⌁</span><strong>Add a photo</strong><small>Photos help us verify reports</small><button class="secondary-button">Choose from gallery</button></div><div class="form-fields"><label>Location <div class="input">⌖ <span>RS Puram, Coimbatore</span><b>Auto-detected</b></div></label><label>What did you see? <div class="category-pills report-pills"><button class="pill active" data-category="Mixed waste">Mixed waste</button><button class="pill" data-category="Plastic">Plastic</button><button class="pill" data-category="Construction">Construction</button></div></label><label>Description <textarea placeholder="Add any details that can help our team..."></textarea></label><button class="primary-button submit-report">Submit report · earn 50 points</button></div></div></div>
+
+      <div id="view-rewards" class="view"><section class="page-title"><div><p class="eyebrow">KEEP GOING</p><h1>Your eco journey</h1><p class="muted">Every good habit counts.</p></div></section><div class="rewards-overview card"><div class="big-points"><span>♢</span><strong>1,240</strong><small>eco points</small></div><div class="level-progress"><div class="level-row"><strong>Eco Explorer</strong><span>1,500 pts to next level</span></div><div class="progress"><span style="width:68%"></span></div><small>260 points to <b>Green Citizen</b></small></div></div><div class="section-head"><div><p class="eyebrow">YOUR BADGES</p><h2>Milestones unlocked</h2></div></div><div class="badges"><div class="badge unlocked"><span>♻</span><strong>Waste Warrior</strong><small>Sorted 25 items</small></div><div class="badge unlocked"><span>♡</span><strong>Kind Neighbor</strong><small>Donated 5 items</small></div><div class="badge locked"><span>✦</span><strong>Eco Hero</strong><small>Donate 10 items</small></div><div class="badge locked"><span>♧</span><strong>Community Champ</strong><small>Join a clean-up</small></div></div></div>
+
+      <div id="view-activity" class="view"><section class="page-title"><div><p class="eyebrow">YOUR HISTORY</p><h1>Activity</h1><p class="muted">A little good goes a long way.</p></div></section><div class="activity-list card"><div class="activity-row"><span class="activity-icon green-marker">♻</span><div><strong>Recycling contribution</strong><small>Dry waste collected · Today, 8:12 AM</small></div><b>+20</b></div><div class="activity-row"><span class="activity-icon peach">⚑</span><div><strong>Report verified</strong><small>Dumping report at 7th Street · Yesterday</small></div><b>+50</b></div><div class="activity-row"><span class="activity-icon lavender">♧</span><div><strong>Donation completed</strong><small>School supplies picked up · 22 Jun</small></div><b>+80</b></div></div></div>
+      <div id="view-admin" class="view"><section class="page-title"><div><p class="eyebrow">BINGO OPERATIONS</p><h1>Admin console</h1><p class="muted">A live pulse check for Coimbatore’s waste network.</p></div><button class="primary-button" id="broadcast-update-button" type="button">＋ Broadcast update</button></section><div class="admin-stats"><div class="card admin-stat"><span class="admin-stat-icon green-marker">♻</span><small>COLLECTION EFFICIENCY</small><strong>94.2%</strong><em>↗ 4.8% this week</em></div><div class="card admin-stat"><span class="admin-stat-icon peach">⚑</span><small>OPEN REPORTS</small><strong>28</strong><em class="warn">6 need review</em></div><div class="card admin-stat"><span class="admin-stat-icon blue-marker">♧</span><small>ACTIVE DONATIONS</small><strong>146</strong><em>↗ 18 this week</em></div></div><article class="card platform-metrics"><div><p class="eyebrow">COST &amp; SCALE</p><h2>Platform usage · last 30 days</h2></div><p><strong id="active-user-metric">—</strong><span> active anonymous sessions</span></p><p><strong id="cost-per-user-metric">—</strong><span> hosting cost per active session</span></p><small>Sessions are not deduplicated people. Enter the monthly infrastructure bill as BINGO_MONTHLY_PLATFORM_COST on the server. No user fees are charged.</small></article><div class="admin-layout"><article class="card reports-panel"><div class="section-head compact"><div><p class="eyebrow">NEEDS ATTENTION</p><h2>Recent reports</h2></div><button class="see-all">View all →</button></div><div class="report-row"><span class="report-status pending"></span><div><strong>Mixed waste near 7th Street</strong><small>Reported by Ananya K. · 12 min ago</small></div><button class="review-button">Review</button></div><div class="report-row"><span class="report-status verified"></span><div><strong>Overflowing bin at Brookefields</strong><small>Reported by Karthik R. · 42 min ago</small></div><button class="review-button">Review</button></div><div class="report-row"><span class="report-status scheduled"></span><div><strong>Construction debris on Mettupalayam Rd</strong><small>Reported by Nila S. · 1 hr ago</small></div><button class="review-button">Assign</button></div></article><article class="card heatmap-panel"><div class="section-head compact"><div><p class="eyebrow">CITY OVERVIEW</p><h2>Dumping hotspots</h2></div></div><div class="heatmap"><span class="hot h1"></span><span class="hot h2"></span><span class="hot h3"></span><span class="hot h4"></span><span class="heat-label">Coimbatore</span></div><div class="heat-footer"><span><i class="legend-dot"></i> 12 hotspots monitored</span><strong>Last updated now</strong></div></article></div></div>
+    </main>
+    <nav class="mobile-nav" aria-label="Quick navigation">
+      <button class="mobile-nav-item active" data-view="home"><span>⌂</span>Home</button>
+      <button class="mobile-nav-item" data-view="explore"><span>⌖</span>Explore</button>
+      <button class="mobile-nav-item" data-view="donate"><span>↗</span>Give &amp; get</button>
+      <button class="mobile-nav-item" data-view="guide"><span>✦</span>Learn</button>
+    </nav>
+  </div>
+  <dialog class="app-dialog" id="app-dialog" aria-labelledby="dialog-title"></dialog>
+  <div class="toast" role="status"></div>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
