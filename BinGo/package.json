@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "A Coimbatore waste collection and community reuse app",
-  "homepage": "https://savindhar-sv.github.io/savindhar-sv/BinGo/",
+  "homepage": "https://bingowaste.in/",
   "scripts": {
     "start": "python3 server.py",
     "test": "python3 -m unittest -v test_server.py"
