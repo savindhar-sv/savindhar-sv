@@ -4,7 +4,7 @@
   "private": true,
   "description": "A Coimbatore waste collection and community reuse app",
   "scripts": {
-    "start": "python3 server.py",
-    "test": "python3 -m unittest -v test_server.py"
+     "start": "node app.js",
+    "test": "Run by the 'npm test' command."
   }
 }
