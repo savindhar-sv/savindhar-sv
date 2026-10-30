@@ -2,13 +2,14 @@
   "name": "bingo-community-app",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "A Coimbatore waste collection and community reuse app",
   "homepage": "https://bingowaste.in/",
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0"
   },
   "scripts": {
-    "start": "python3 -m http.server 8000",
+    "start": "node server.js",
     "test": "python3 -m unittest -v test_server.py"
   }
 }
