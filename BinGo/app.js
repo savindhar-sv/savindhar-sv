@@ -173,7 +173,7 @@ function translateInterface() {
     const node = walker.currentNode;
     const original = node.nodeValue;
     const text = original.trim();
-    if (languageMap[text]) {
+    if (languageMap[text] && languageMap[text] !== text) {
       const startWhitespace = original.match(/^\s*/)[0];
       const endWhitespace = original.match(/\s*$/)[0];
       node.nodeValue = `${startWhitespace}${languageMap[text]}${endWhitespace}`;
@@ -182,15 +182,21 @@ function translateInterface() {
   document.querySelectorAll("body *").forEach(element => {
     for (const attribute of ["placeholder", "aria-label"]) {
       const value = element.getAttribute(attribute);
-      if (value && languageMap[value]) element.setAttribute(attribute, languageMap[value]);
+      if (value && languageMap[value] && languageMap[value] !== value) {
+        element.setAttribute(attribute, languageMap[value]);
+      }
     }
   });
   const toggle = document.querySelector("#language-toggle");
   if (toggle) {
-    toggle.innerHTML = language === "ta"
+    const toggleMarkup = language === "ta"
       ? '<span>EN</span><i>|</i><span class="selected-language">TN</span>'
       : '<span class="selected-language">EN</span><i>|</i><span>TN</span>';
-    toggle.setAttribute("aria-label", language === "ta" ? "Switch to English" : "Switch to Tamil");
+    if (toggle.innerHTML !== toggleMarkup) toggle.innerHTML = toggleMarkup;
+    const toggleLabel = language === "ta" ? "Switch to English" : "Switch to Tamil";
+    if (toggle.getAttribute("aria-label") !== toggleLabel) {
+      toggle.setAttribute("aria-label", toggleLabel);
+    }
   }
 }
 
