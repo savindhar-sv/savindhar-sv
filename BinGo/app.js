@@ -1,3 +1,5 @@
+import { getSupabaseClient } from "./supabase-client.js";
+
 const views = document.querySelectorAll(".view");
 const navItems = document.querySelectorAll("[data-view]");
 const sidebar = document.querySelector(".sidebar");
@@ -1641,7 +1643,7 @@ document.querySelectorAll(".more-button").forEach(button => {
 renderProfile();
 savePreferences();
 
-async function communityRequest(path, { method = "GET", body, authenticated = true } = {}) {
+async function legacyCommunityRequest(path, { method = "GET", body, authenticated = true } = {}) {
   const headers = {};
   if (body !== undefined) {
     headers["Content-Type"] = "application/json";
@@ -1672,32 +1674,271 @@ async function communityRequest(path, { method = "GET", body, authenticated = tr
   return result;
 }
 
+function throwSupabaseError(error) {
+  if (error) throw new Error(error.message || "Supabase request failed.");
+}
+
+async function supabaseCommunityRequest(path, { method = "GET", body } = {}) {
+  const client = await getSupabaseClient();
+  const userId = communitySession?.supabaseUserId;
+  if (!userId) throw new Error("Connect to the BinGo community before continuing.");
+  const route = new URL(path, window.location.origin).pathname;
+
+  if (route === "/api/session" && method === "PATCH") {
+    const { error } = await client.from("profiles").upsert({
+      id: userId,
+      neighborhood: body.neighborhood
+    }, { onConflict: "id" });
+    throwSupabaseError(error);
+    await legacyCommunityRequest(path, { method, body });
+    return { status: "ok", neighborhood: body.neighborhood };
+  }
+
+  if (route === "/api/items" && method === "GET") {
+    const { data, error } = await client.from("listings")
+      .select("id,title,category,photo_path,neighborhood,owner_id,created_at")
+      .eq("status", "available")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    throwSupabaseError(error);
+    const { data: requestedRows, error: requestError } = await client.from("exchanges")
+      .select("listing_id")
+      .eq("requester_id", userId)
+      .eq("status", "requested");
+    throwSupabaseError(requestError);
+    const requested = new Set((requestedRows || []).map(row => row.listing_id));
+    const items = await Promise.all((data || []).map(async listing => {
+      let photoUrl = null;
+      if (listing.photo_path) {
+        const signed = await client.storage.from("listing-photos")
+          .createSignedUrl(listing.photo_path, 300);
+        if (!signed.error) photoUrl = signed.data.signedUrl;
+      }
+      return {
+        listing_id: listing.id,
+        title: listing.title,
+        category: listing.category,
+        photo_url: photoUrl,
+        neighborhood: listing.neighborhood,
+        is_owner: listing.owner_id === userId,
+        requested: requested.has(listing.id)
+      };
+    }));
+    return { items };
+  }
+
+  if (route === "/api/items" && method === "POST") {
+    const match = /^data:image\/jpeg;base64,([A-Za-z0-9+/]+={0,2})$/.exec(body.photo_data || "");
+    if (!match) throw new Error("The item photo could not be prepared as JPEG.");
+    const listingId = crypto.randomUUID();
+    const photoPath = `${userId}/${listingId}.jpg`;
+    const binary = atob(match[1]);
+    const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+    const { error: uploadError } = await client.storage.from("listing-photos")
+      .upload(photoPath, bytes, { contentType: "image/jpeg", upsert: false });
+    throwSupabaseError(uploadError);
+    const { error } = await client.from("listings").insert({
+      id: listingId,
+      title: String(body.title || "").trim(),
+      category: body.category,
+      photo_path: photoPath
+    });
+    if (error) {
+      await client.storage.from("listing-photos").remove([photoPath]);
+      throwSupabaseError(error);
+    }
+    return { status: "ok", listing_id: listingId };
+  }
+
+  const requestRoute = /^\/api\/items\/([^/]+)\/requests$/.exec(route);
+  if (requestRoute && method === "POST") {
+    const listingId = decodeURIComponent(requestRoute[1]);
+    const { data: listing, error } = await client.from("listings")
+      .select("id,owner_id,title,status,category")
+      .eq("id", listingId)
+      .maybeSingle();
+    throwSupabaseError(error);
+    if (!listing || listing.status !== "available") throw new Error("This item is no longer available.");
+    if (listing.owner_id === userId) throw new Error("You cannot request your own item.");
+    const { data: inserted, error: insertError } = await client.from("exchanges").insert({
+      listing_id: listing.id,
+      listing_title: listing.title,
+      listing_category: listing.category,
+      requester_id: userId,
+      owner_id: listing.owner_id
+    }).select("id").single();
+    if (insertError?.code === "23505") {
+      const { data: existing, error: existingError } = await client.from("exchanges")
+        .select("id").eq("listing_id", listing.id).eq("requester_id", userId).single();
+      throwSupabaseError(existingError);
+      return { status: "requested", exchange_id: existing.id };
+    }
+    throwSupabaseError(insertError);
+    return { status: "requested", exchange_id: inserted.id };
+  }
+
+  if (route === "/api/exchanges" && method === "GET") {
+    const { data, error } = await client.from("exchanges")
+      .select("id,listing_title,listing_category,requester_id,owner_id,status,diverted_kg,updated_at")
+      .order("updated_at", { ascending: false }).limit(100);
+    throwSupabaseError(error);
+    return {
+      exchanges: (data || []).map(exchange => ({
+        exchange_id: exchange.id,
+        title: exchange.listing_title,
+        category: exchange.listing_category,
+        status: exchange.status,
+        diverted_kg: exchange.diverted_kg,
+        updated_at: exchange.updated_at,
+        other_person: exchange.owner_id === userId ? "Requester" : "Giver"
+      }))
+    };
+  }
+
+  const keysRoute = /^\/api\/exchanges\/([^/]+)\/keys$/.exec(route);
+  if (keysRoute && method === "GET") {
+    const exchangeId = decodeURIComponent(keysRoute[1]);
+    const { data: exchange, error } = await client.from("exchanges")
+      .select("requester_id,owner_id").eq("id", exchangeId).maybeSingle();
+    throwSupabaseError(error);
+    if (!exchange) throw new Error("Conversation not found.");
+    const { data: rows, error: keyError } = await client.from("exchange_encryption_keys")
+      .select("user_id,public_key")
+      .in("user_id", [exchange.requester_id, exchange.owner_id]);
+    throwSupabaseError(keyError);
+    const public_keys = Object.fromEntries((rows || []).map(row => [row.user_id, row.public_key]));
+    return { user_id: userId, public_keys, ready: Object.keys(public_keys).length === 2 };
+  }
+
+  if (route === "/api/session/encryption-key" && method === "POST") {
+    const { error } = await client.from("exchange_encryption_keys").upsert({
+      user_id: userId,
+      public_key: body.public_key,
+      updated_at: new Date().toISOString()
+    }, { onConflict: "user_id" });
+    throwSupabaseError(error);
+    return { status: "saved" };
+  }
+
+  const messagesRoute = /^\/api\/exchanges\/([^/]+)\/messages$/.exec(route);
+  if (messagesRoute && method === "GET") {
+    const exchangeId = decodeURIComponent(messagesRoute[1]);
+    const { data, error } = await client.from("exchange_messages")
+      .select("sender_id,encrypted_payload,created_at")
+      .eq("exchange_id", exchangeId)
+      .order("created_at", { ascending: true }).limit(500);
+    throwSupabaseError(error);
+    return {
+      user_id: userId,
+      messages: (data || []).map(message => ({
+        sender_id: message.sender_id,
+        message: JSON.stringify(message.encrypted_payload),
+        created_at: message.created_at
+      }))
+    };
+  }
+  if (messagesRoute && method === "POST") {
+    const exchangeId = decodeURIComponent(messagesRoute[1]);
+    const { error } = await client.from("exchange_messages").insert({
+      exchange_id: exchangeId,
+      sender_id: userId,
+      encrypted_payload: body.encrypted
+    });
+    throwSupabaseError(error);
+    const { error: touchError } = await client.rpc("touch_exchange", { p_exchange_id: exchangeId });
+    throwSupabaseError(touchError);
+    return { status: "sent" };
+  }
+
+  const completeRoute = /^\/api\/exchanges\/([^/]+)$/.exec(route);
+  if (completeRoute && method === "PATCH") {
+    const { data, error } = await client.rpc("complete_exchange", {
+      p_exchange_id: decodeURIComponent(completeRoute[1])
+    });
+    throwSupabaseError(error);
+    const completed = Array.isArray(data) ? data[0] : data;
+    return { status: completed.status, diverted_kg: Number(completed.diverted_kg) };
+  }
+
+  if (route === "/api/impact" && method === "GET") {
+    const { data, error } = await client.rpc("get_community_impact");
+    throwSupabaseError(error);
+    const impact = Array.isArray(data) ? data[0] : data;
+    return {
+      diverted_kg: Number(impact?.diverted_kg || 0),
+      completed_exchanges: Number(impact?.completed_exchanges || 0),
+      community_diverted_kg: Number(impact?.community_diverted_kg || 0),
+      estimated: true,
+      method: "category-average-per-completed-item"
+    };
+  }
+
+  return null;
+}
+
+async function communityRequest(path, options = {}) {
+  const method = options.method || "GET";
+  if (path === "/api/session" && method === "POST") {
+    return legacyCommunityRequest(path, options);
+  }
+  const route = new URL(path, window.location.origin).pathname;
+  const isSupabaseRoute =
+    (route === "/api/session" && method === "PATCH") ||
+    route === "/api/items" ||
+    route === "/api/exchanges" ||
+    route === "/api/impact" ||
+    route === "/api/session/encryption-key" ||
+    /^\/api\/items\/[^/]+\/requests$/.test(route) ||
+    /^\/api\/exchanges\/[^/]+(?:\/keys|\/messages)?$/.test(route);
+  if (isSupabaseRoute) return supabaseCommunityRequest(path, options);
+  return legacyCommunityRequest(path, options);
+}
+
 async function ensureCommunitySession() {
+  const client = await getSupabaseClient();
+  let { data: authData, error: authError } = await client.auth.getSession();
+  if (authError) throw new Error(authError.message);
+  if (!authData.session) {
+    ({ data: authData, error: authError } = await client.auth.signInAnonymously());
+    if (authError) {
+      throw new Error(`${authError.message} Enable anonymous sign-ins in Supabase Auth settings.`);
+    }
+  }
+  const supabaseUserId = authData.session.user.id;
+
   const storedSession = window.localStorage.getItem(sessionStorageKey);
   if (storedSession) {
     try {
       communitySession = JSON.parse(storedSession);
-      await communityRequest("/api/exchanges");
-      await communityRequest("/api/session", {
+      await legacyCommunityRequest("/api/impact");
+      await legacyCommunityRequest("/api/session", {
         method: "PATCH",
         body: { neighborhood: preferences.neighborhood || "RS Puram" }
       });
-      return;
     } catch (error) {
       if (error.status !== 401) {
         communitySession = null;
         throw error;
       }
+      communitySession = null;
       window.localStorage.removeItem(sessionStorageKey);
     }
   }
-  const session = await communityRequest("/api/session", {
-    method: "POST",
-    body: { neighborhood: preferences.neighborhood || "RS Puram" },
-    authenticated: false
-  });
-  communitySession = { token: session.token, userId: session.user_id };
-  window.localStorage.setItem(sessionStorageKey, JSON.stringify(communitySession));
+  if (!communitySession) {
+    const session = await legacyCommunityRequest("/api/session", {
+      method: "POST",
+      body: { neighborhood: preferences.neighborhood || "RS Puram" },
+      authenticated: false
+    });
+    communitySession = { token: session.token, userId: session.user_id };
+    window.localStorage.setItem(sessionStorageKey, JSON.stringify(communitySession));
+  }
+  communitySession.supabaseUserId = supabaseUserId;
+  const { error: profileError } = await client.from("profiles").upsert({
+    id: supabaseUserId,
+    neighborhood: preferences.neighborhood || "RS Puram"
+  }, { onConflict: "id" });
+  throwSupabaseError(profileError);
 }
 
 function bytesToBase64(value) {
@@ -1760,11 +2001,11 @@ async function ensureEncryptionKey() {
   if (!communitySession) {
     await ensureCommunitySession();
   }
-  if (localEncryptionKey?.userId === communitySession.userId) {
+  if (localEncryptionKey?.userId === communitySession.supabaseUserId) {
     return localEncryptionKey;
   }
 
-  let keyRecord = await getStoredEncryptionKey(communitySession.userId);
+  let keyRecord = await getStoredEncryptionKey(communitySession.supabaseUserId);
   if (!keyRecord) {
     const pair = await crypto.subtle.generateKey(
       { name: "ECDH", namedCurve: "P-256" },
@@ -1775,13 +2016,13 @@ async function ensureEncryptionKey() {
       privateKey: pair.privateKey,
       publicKey: bytesToBase64(await crypto.subtle.exportKey("raw", pair.publicKey))
     };
-    await storeEncryptionKey(communitySession.userId, keyRecord);
+    await storeEncryptionKey(communitySession.supabaseUserId, keyRecord);
   }
   await communityRequest("/api/session/encryption-key", {
     method: "POST",
     body: { public_key: keyRecord.publicKey }
   });
-  localEncryptionKey = { ...keyRecord, userId: communitySession.userId };
+  localEncryptionKey = { ...keyRecord, userId: communitySession.supabaseUserId };
   return localEncryptionKey;
 }
 
@@ -1956,7 +2197,7 @@ async function loadCommunityListings() {
         listingId: item.listing_id,
         title: item.title,
         category: item.category,
-        photoUrl: item.photo_data,
+        photoUrl: item.photo_url || item.photo_data,
         neighborhood: item.neighborhood,
         isOwner: item.is_owner,
         requested: item.requested
@@ -2120,7 +2361,7 @@ async function openConversation(exchangeId, itemTitle) {
           return;
         }
         const peerId = Object.keys(exchangeKeys.public_keys)
-          .find(userId => userId !== communitySession.userId);
+          .find(userId => userId !== communitySession.supabaseUserId);
         if (!peerId) {
           throw new Error("Could not find the other participant’s encryption key.");
         }
@@ -2164,7 +2405,7 @@ async function openConversation(exchangeId, itemTitle) {
           form.elements.message.value.trim(),
           conversationKey,
           exchangeId,
-          communitySession.userId
+          communitySession.supabaseUserId
         );
         await communityRequest(`/api/exchanges/${encodeURIComponent(exchangeId)}/messages`, {
           method: "POST",

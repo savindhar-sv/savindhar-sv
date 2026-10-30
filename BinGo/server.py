@@ -22,6 +22,24 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 
 APP_DIRECTORY = Path(__file__).resolve().parent
+
+
+def load_local_environment():
+    env_file = APP_DIRECTORY / ".env"
+    if not env_file.is_file():
+        return
+    for raw_line in env_file.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, value = line.split("=", 1)
+        name = name.strip()
+        value = value.strip().strip("\"'")
+        if name and name not in os.environ:
+            os.environ[name] = value
+
+
+load_local_environment()
 DATABASE_PATH = Path(os.environ.get("BINGO_DATABASE", APP_DIRECTORY / "data" / "bingo.sqlite3"))
 MAX_BODY_BYTES = 400 * 1024
 LIVE_SECONDS = 90
@@ -250,6 +268,10 @@ class BingoRequestHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         route = urlsplit(self.path).path
+        decoded_route = unquote(route)
+        if decoded_route == "/.env" or decoded_route.startswith("/.env."):
+            self.send_error(404)
+            return
         if self.client_address[0] not in {"127.0.0.1", "::1"} and not self.request_is_secure():
             self.send_response(308)
             self.send_header("Location", "https://" + self.headers.get("Host", "") + self.path)
@@ -257,6 +279,17 @@ class BingoRequestHandler(SimpleHTTPRequestHandler):
             return
         if route == "/api/health":
             self.send_json(200, {"status": "ok"})
+            return
+        if route == "/api/config":
+            supabase_url = os.environ.get("SUPABASE_URL", "").strip()
+            publishable_key = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "").strip()
+            if not supabase_url or not publishable_key:
+                self.send_json(503, {"error": "Supabase is not configured on this server."})
+                return
+            self.send_json(200, {
+                "supabase_url": supabase_url,
+                "publishable_key": publishable_key,
+            })
             return
         if route == "/api/trucks":
             self.send_trucks()

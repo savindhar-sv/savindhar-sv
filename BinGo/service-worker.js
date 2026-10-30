@@ -1,9 +1,10 @@
-const CACHE_NAME = "bingo-shell-v4";
+const CACHE_NAME = "bingo-shell-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./supabase-client.js",
   "./manifest.json",
   "./icon.svg"
 ];
