@@ -135,7 +135,29 @@ const tamilTranslations = {
   "View on map ↗": "வரைபடத்தில் காண்க ↗",
   "Open truck map in OpenStreetMap": "டிரக் வரைபடத்தை OpenStreetMap-இல் திற",
   "Open truck map in Google Maps": "டிரக் வரைபடத்தை Google Maps-இல் திற",
-  "Mark exchange complete": "பரிமாற்றம் முடிந்தது எனக் குறி"
+  "Mark exchange complete": "பரிமாற்றம் முடிந்தது எனக் குறி",
+  "Find your waste type": "உங்கள் கழிவு வகையைக் கண்டறியுங்கள்",
+  "Wet waste": "ஈரக் கழிவு",
+  "Food scraps, peels, tea leaves and garden waste. Keep it separate and avoid plastic liners.": "உணவுக் கழிவுகள், தோல்கள், தேயிலை மற்றும் தோட்டக் கழிவுகள். தனியாக வைக்கவும்; பிளாஸ்டிக் பைகளைத் தவிர்க்கவும்.",
+  "Dry recyclables": "உலர் மறுசுழற்சிக் கழிவுகள்",
+  "Clean, dry paper, cardboard, metal, glass and recyclable packaging. Keep soiled items out.": "சுத்தமான உலர் காகிதம், அட்டைப்பெட்டி, உலோகம், கண்ணாடி மற்றும் மறுசுழற்சி பேக்கேஜிங். அழுக்கானவற்றைச் சேர்க்க வேண்டாம்.",
+  "Phones, chargers, small appliances, bulbs and batteries. Keep batteries apart; use an authorised collection point.": "தொலைபேசிகள், சார்ஜர்கள், சிறு சாதனங்கள், பல்புகள் மற்றும் பேட்டரிகள். பேட்டரிகளைத் தனியாக வைத்து அங்கீகரிக்கப்பட்ட மையத்தில் ஒப்படைக்கவும்.",
+  "Domestic hazardous": "வீட்டு அபாயக் கழிவுகள்",
+  "Used medicines, sanitary waste, paint or chemical containers, and sharps. Seal safely; never mix with compost.": "பயன்படுத்திய மருந்துகள், சுகாதாரக் கழிவுகள், வண்ணம் அல்லது ரசாயனக் கொள்கலன்கள் மற்றும் கூர்மையான பொருட்கள். பாதுகாப்பாக மூடி உரத்துடன் கலக்க வேண்டாம்.",
+  "COIMBATORE · CCMC": "கோயம்புத்தூர் · CCMC",
+  "Collection at a glance": "கழிவு சேகரிப்பு வழிகாட்டி",
+  "CCMC serves five zones across 100 wards. Collection days and routes can differ by street; confirm your local schedule with your ward office or sanitation team.": "CCMC 100 வார்டுகளைக் கொண்ட ஐந்து மண்டலங்களில் சேவை செய்கிறது. சேகரிப்பு நாட்களும் வழித்தடங்களும் தெருவுக்கு மாறலாம்; உங்கள் வார்டு அலுவலகம் அல்லது சுகாதாரக் குழுவிடம் உறுதிப்படுத்துங்கள்.",
+  "Usually collected daily during door-to-door rounds.": "வீடு வீடாகச் சேகரிக்கும் சுற்றுகளில் பொதுவாக தினமும் சேகரிக்கப்படும்.",
+  "Collected separately on designated neighborhood days.": "பகுதிக்கென நிர்ணயிக்கப்பட்ட நாட்களில் தனியாகச் சேகரிக்கப்படும்.",
+  "Maru Nesavu recycling collection is reported on Wednesdays; confirm locally.": "மறு நெசவு மறுசுழற்சி சேகரிப்பு புதன்கிழமைகளில் நடைபெறுவதாகக் கூறப்படுகிறது; உள்ளூரில் உறுதிப்படுத்துங்கள்.",
+  "Keep separate and hand over during the designated dry-waste sweep.": "தனியாக வைத்து, நிர்ணயிக்கப்பட்ட உலர் கழிவு சேகரிப்பின்போது ஒப்படைக்கவும்.",
+  "Five administrative zones": "ஐந்து நிர்வாக மண்டலங்கள்",
+  "Examples of areas served: Thudiyalur and Saravanampatti (North); Peelamedu and Singanallur (East); Gandhipuram and RS Puram (Central); Kurichi and Podanur (South); Vadavalli and Veerakeralam (West). Check CCMC’s ward lookup for your exact zone.": "சேவைப் பகுதிகளின் எடுத்துக்காட்டுகள்: துடியலூர், சரவணம்பட்டி (வடக்கு); பீளமேடு, சிங்காநல்லூர் (கிழக்கு); காந்திபுரம், RS புரம் (மத்திய); குறிச்சி, போத்தனூர் (தெற்கு); வடவள்ளி, வீரகேரளம் (மேற்கு). உங்கள் மண்டலத்தை CCMC வார்டு தேடலில் சரிபார்க்கவும்.",
+  "CCMC ward and zone information ↗": "CCMC வார்டு மற்றும் மண்டல விவரங்கள் ↗",
+  "MISSED PICKUP OR ROUTE ISSUE?": "சேகரிப்பு தவறியதா அல்லது வழித்தடச் சிக்கலா?",
+  "Message CCMC on WhatsApp": "WhatsApp-இல் CCMC-க்கு செய்தி அனுப்புங்கள்",
+  "Send a grievance or ask about collection status through the corporation’s WhatsApp channel.": "மாநகராட்சியின் WhatsApp வழியாகப் புகார் அளிக்கவும் அல்லது சேகரிப்பு நிலையை விசாரிக்கவும்.",
+  "WhatsApp 81900 00200 ↗": "WhatsApp 81900 00200 ↗"
 };
 const englishTranslations = Object.fromEntries(
   Object.entries(tamilTranslations).map(([english, tamil]) => [tamil, english])
@@ -163,7 +185,9 @@ function translateInterface() {
   });
   const toggle = document.querySelector("#language-toggle");
   if (toggle) {
-    toggle.textContent = language === "ta" ? "English" : "தமிழ்";
+    toggle.innerHTML = language === "ta"
+      ? '<span>EN</span><i>|</i><span class="selected-language">TN</span>'
+      : '<span class="selected-language">EN</span><i>|</i><span>TN</span>';
     toggle.setAttribute("aria-label", language === "ta" ? "Switch to English" : "Switch to Tamil");
   }
 }
