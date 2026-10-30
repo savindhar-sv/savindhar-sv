@@ -424,12 +424,11 @@ async function refreshDumpingReportMarkers() {
     return;
   }
   try {
-    const response = await fetch("/api/reports", { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error("Hotspot reports are unavailable.");
-    }
-    const payload = await response.json();
-    const reports = Array.isArray(payload?.reports) ? payload.reports : [];
+    const client = await getSupabaseClient();
+    const { data: reports, error } = await client.from("dumping_reports")
+      .select("category,latitude,longitude,created_at")
+      .order("created_at", { ascending: false }).limit(200);
+    throwSupabaseError(error);
     hotspotMaps.forEach(({ map, maplibregl, markers }) => {
       markers.forEach(marker => marker.remove());
       markers.length = 0;
@@ -478,12 +477,12 @@ function dropoffCategoryLabel(category) {
 
 async function loadVerifiedDropoffs() {
   try {
-    const response = await fetch("/api/dropoffs", { cache: "no-store" });
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload.error || "Verified drop-off locations are unavailable.");
-    }
-    verifiedDropoffs = Array.isArray(payload.dropoffs) ? payload.dropoffs : [];
+    const client = await getSupabaseClient();
+    const { data, error } = await client.from("dropoff_locations")
+      .select("name,category,latitude,longitude,phone,source_url,verified_at")
+      .eq("is_active", true).order("name");
+    throwSupabaseError(error);
+    verifiedDropoffs = data || [];
     dropoffMaps.forEach(({ map, maplibregl, markers }) => {
       markers.forEach(marker => marker.remove());
       markers.length = 0;
@@ -971,14 +970,19 @@ function setTruckStatus(truck) {
 
 async function refreshTruckLocations() {
   try {
-    const response = await fetch("/api/trucks", { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error("Truck tracking service unavailable");
-    }
-    const payload = await response.json();
-    const fleet = Array.isArray(payload?.trucks) ? payload.trucks : [];
-    const matchingTruck = fleet.find(truck => truck.id === truckId && truck.status === "live")
-      || fleet.find(truck => truck.status === "live");
+    const client = await getSupabaseClient();
+    const { data: fleet, error } = await client.from("truck_locations")
+      .select("truck_id,latitude,longitude,neighborhood,estimated_arrival_at,updated_at")
+      .gt("updated_at", new Date(Date.now() - 90000).toISOString());
+    throwSupabaseError(error);
+    const trucks = (fleet || []).map(row => ({
+      id: row.truck_id, latitude: row.latitude, longitude: row.longitude,
+      neighborhood: row.neighborhood,
+      estimated_arrival_at: row.estimated_arrival_at ? Math.floor(Date.parse(row.estimated_arrival_at) / 1000) : null,
+      updated_at: Math.floor(Date.parse(row.updated_at) / 1000), status: "live"
+    }));
+    const matchingTruck = trucks.find(truck => truck.id === truckId)
+      || trucks[0];
     if (matchingTruck) {
       setTruckStatus(matchingTruck);
       return;
@@ -1001,14 +1005,13 @@ async function refreshTruckLocations() {
 async function loadCollectionSchedule() {
   const neighborhood = preferences.neighborhood || "RS Puram";
   try {
-    const response = await fetch(`/api/schedule?neighborhood=${encodeURIComponent(neighborhood)}`, {
-      cache: "no-store"
-    });
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload.error || "Collection schedule unavailable.");
-    }
-    if (!Array.isArray(payload.schedules) || payload.schedules.length === 0) {
+    const client = await getSupabaseClient();
+    const { data: schedules, error } = await client.from("collection_schedules")
+      .select("waste_type,weekdays,pickup_window,source_url,verified_at")
+      .eq("neighborhood", neighborhood).eq("is_active", true)
+      .order("verified_at", { ascending: false });
+    throwSupabaseError(error);
+    if (!schedules?.length) {
       collectionScheduleDisplay = {
         status: "Schedule needed",
         title: "Not set",
@@ -1019,7 +1022,7 @@ async function loadCollectionSchedule() {
       return;
     }
 
-    const schedule = payload.schedules[0];
+    const schedule = schedules[0];
     const dayNames = schedule.weekdays.map(day => day.slice(0, 3)).join(", ");
     collectionScheduleDisplay = {
       status: "Schedule data loaded",
@@ -1028,7 +1031,7 @@ async function loadCollectionSchedule() {
       detail: `${schedule.waste_type} · ${dayNames} · ${schedule.pickup_window}`,
       source: schedule.source_url,
       verifiedAt: schedule.verified_at,
-      additionalCount: payload.schedules.length - 1
+      additionalCount: schedules.length - 1
     };
     renderCollectionBanner();
   } catch (error) {
@@ -1083,88 +1086,10 @@ function renderCollectionBanner(truck = currentTruckLocation) {
 }
 
 async function shareTruckLocationFromPhone() {
-  if (!navigator.geolocation) {
-    notify("This browser cannot share live GPS coordinates.");
-    return;
-  }
-
-  const truckForm = `
-    <form class="dialog-form" id="truck-location-form">
-      <label>Truck ID
-        <input class="input" name="truckId" value="${truckId}" required>
-      </label>
-      <label>Arrival neighbourhood
-        <select class="input" name="neighborhood" required>
-          ${["RS Puram", "Gandhipuram", "Saibaba Colony", "Race Course", "Coimbatore"]
-            .map(neighborhood => `<option>${neighborhood}</option>`).join("")}
-        </select>
-      </label>
-      <label>Estimated arrival time
-        <input class="input" name="arrival" type="datetime-local">
-      </label>
-      <label>Driver token
-        <input class="input" name="token" type="password" autocomplete="off" placeholder="Paste your private driver token" required>
-      </label>
-      <small>Arrival estimates are optional and must be kept current by the route operator.</small>
-      <button class="primary-button" type="submit">Share live position</button>
-    </form>`;
-
-  openDialog("Share live truck GPS", "Use the driver phone to send the route team’s current coordinates to the app.", truckForm, () => {
-    const form = dialog.querySelector("#truck-location-form");
-    form.addEventListener("submit", async event => {
-      event.preventDefault();
-      const formData = new FormData(form);
-      const truckName = String(formData.get("truckId") || truckId).trim();
-      const token = String(formData.get("token") || "").trim();
-      if (!truckName || !token) {
-        notify("Add a valid truck ID and driver token.");
-        return;
-      }
-
-      try {
-        const position = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 20000,
-            maximumAge: 10000
-          });
-        });
-        const payload = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy_m: position.coords.accuracy || 0,
-          neighborhood: String(formData.get("neighborhood") || "")
-        };
-        const arrivalValue = String(formData.get("arrival") || "");
-        if (arrivalValue) {
-          const arrivalAt = Date.parse(arrivalValue);
-          if (!Number.isFinite(arrivalAt) || arrivalAt <= Date.now()) {
-            throw new Error("Choose a future estimated arrival time.");
-          }
-          payload.estimated_arrival_at = Math.floor(arrivalAt / 1000);
-        } else {
-          payload.neighborhood = null;
-        }
-        const response = await fetch(`/api/trucks/${encodeURIComponent(truckName)}/location`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          throw new Error(result.error || "Unable to update GPS");
-        }
-        dialog.close();
-        notify(`Live GPS updated for ${truckName}.`);
-        await refreshTruckLocations();
-      } catch (error) {
-        notify(error.message || "GPS sharing failed.");
-      }
-    });
-  });
+  openDialog(
+    "Live truck tracking",
+    "This free static version can display recent truck positions saved in Supabase. Publishing driver GPS needs a trusted server or secured Supabase Edge Function, so this page will not ask for or expose a driver token."
+  );
 }
 
 dialog.addEventListener("click", event => {
@@ -1552,12 +1477,9 @@ function openSettings() {
     loadSurveySummary(surveySummary);
     surveyForm.addEventListener("submit", async event => {
       event.preventDefault();
-      if (!communitySession) {
-        notify("Survey submissions need the BinGo community service.");
-        return;
-      }
       const ratings = Object.fromEntries(new FormData(surveyForm));
       try {
+        await ensureCommunitySession();
         await communityRequest("/api/survey", {
           method: "POST",
           body: Object.fromEntries(Object.entries(ratings).map(([key, value]) => [key, Number(value)]))
@@ -1644,34 +1566,7 @@ renderProfile();
 savePreferences();
 
 async function legacyCommunityRequest(path, { method = "GET", body, authenticated = true } = {}) {
-  const headers = {};
-  if (body !== undefined) {
-    headers["Content-Type"] = "application/json";
-  }
-  if (authenticated && communitySession?.token) {
-    headers.Authorization = `Bearer ${communitySession.token}`;
-  }
-  let response;
-  try {
-    response = await fetch(path, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-      cache: "no-store"
-    });
-  } catch (error) {
-    throw new Error("Community service is unreachable. Check your connection and BinGo server.");
-  }
-  if (!response.headers.get("content-type")?.includes("application/json")) {
-    throw new Error("Community service is not configured. Start the BinGo server to use listings and messages.");
-  }
-  const result = await response.json();
-  if (!response.ok) {
-    const error = new Error(result.error || "Community request failed.");
-    error.status = response.status;
-    throw error;
-  }
-  return result;
+  throw new Error(`This feature (${path}) is not available in the free static version yet.`);
 }
 
 function throwSupabaseError(error) {
@@ -1690,8 +1585,45 @@ async function supabaseCommunityRequest(path, { method = "GET", body } = {}) {
       neighborhood: body.neighborhood
     }, { onConflict: "id" });
     throwSupabaseError(error);
-    await legacyCommunityRequest(path, { method, body });
     return { status: "ok", neighborhood: body.neighborhood };
+  }
+
+  if (route === "/api/reports" && method === "GET") {
+    const { data, error } = await client.from("dumping_reports")
+      .select("category,latitude,longitude,created_at")
+      .order("created_at", { ascending: false }).limit(200);
+    throwSupabaseError(error);
+    return { reports: data || [] };
+  }
+  if (route === "/api/reports" && method === "POST") {
+    const { error } = await client.from("dumping_reports").insert({
+      category: body.category,
+      description: String(body.description || "").trim().slice(0, 500),
+      latitude: Math.round(Number(body.latitude) * 1000) / 1000,
+      longitude: Math.round(Number(body.longitude) * 1000) / 1000
+    });
+    throwSupabaseError(error);
+    return { status: "ok" };
+  }
+  if (route === "/api/survey" && method === "POST") {
+    const { error } = await client.rpc("submit_design_survey", {
+      p_visual_clarity: Number(body.visual_clarity),
+      p_icon_readability: Number(body.icon_readability),
+      p_layout_appeal: Number(body.layout_appeal)
+    });
+    throwSupabaseError(error);
+    return { status: "ok" };
+  }
+  if (route === "/api/survey" && method === "GET") {
+    const { data, error } = await client.rpc("get_design_survey_summary");
+    throwSupabaseError(error);
+    const summary = Array.isArray(data) ? data[0] : data;
+    return {
+      response_count: Number(summary?.response_count || 0),
+      target_responses: 10,
+      averages: [summary?.visual_clarity, summary?.icon_readability, summary?.layout_appeal]
+        .map(value => value === null || value === undefined ? null : Number(value))
+    };
   }
 
   if (route === "/api/items" && method === "GET") {
@@ -1878,15 +1810,14 @@ async function supabaseCommunityRequest(path, { method = "GET", body } = {}) {
 
 async function communityRequest(path, options = {}) {
   const method = options.method || "GET";
-  if (path === "/api/session" && method === "POST") {
-    return legacyCommunityRequest(path, options);
-  }
   const route = new URL(path, window.location.origin).pathname;
   const isSupabaseRoute =
     (route === "/api/session" && method === "PATCH") ||
     route === "/api/items" ||
     route === "/api/exchanges" ||
     route === "/api/impact" ||
+    route === "/api/reports" ||
+    route === "/api/survey" ||
     route === "/api/session/encryption-key" ||
     /^\/api\/items\/[^/]+\/requests$/.test(route) ||
     /^\/api\/exchanges\/[^/]+(?:\/keys|\/messages)?$/.test(route);
@@ -1905,35 +1836,7 @@ async function ensureCommunitySession() {
     }
   }
   const supabaseUserId = authData.session.user.id;
-
-  const storedSession = window.localStorage.getItem(sessionStorageKey);
-  if (storedSession) {
-    try {
-      communitySession = JSON.parse(storedSession);
-      await legacyCommunityRequest("/api/impact");
-      await legacyCommunityRequest("/api/session", {
-        method: "PATCH",
-        body: { neighborhood: preferences.neighborhood || "RS Puram" }
-      });
-    } catch (error) {
-      if (error.status !== 401) {
-        communitySession = null;
-        throw error;
-      }
-      communitySession = null;
-      window.localStorage.removeItem(sessionStorageKey);
-    }
-  }
-  if (!communitySession) {
-    const session = await legacyCommunityRequest("/api/session", {
-      method: "POST",
-      body: { neighborhood: preferences.neighborhood || "RS Puram" },
-      authenticated: false
-    });
-    communitySession = { token: session.token, userId: session.user_id };
-    window.localStorage.setItem(sessionStorageKey, JSON.stringify(communitySession));
-  }
-  communitySession.supabaseUserId = supabaseUserId;
+  communitySession = { supabaseUserId };
   const { error: profileError } = await client.from("profiles").upsert({
     id: supabaseUserId,
     neighborhood: preferences.neighborhood || "RS Puram"
@@ -2480,17 +2383,8 @@ async function loadImpact() {
 async function loadPlatformMetrics() {
   const activeUsers = document.querySelector("#active-user-metric");
   const costPerUser = document.querySelector("#cost-per-user-metric");
-  try {
-    const metrics = await communityRequest("/api/metrics", { authenticated: false });
-    activeUsers.textContent = String(metrics.active_users_30d);
-    costPerUser.textContent = metrics.cost_per_active_user === null
-      ? "Configure monthly bill"
-      : `₹${metrics.cost_per_active_user.toFixed(2)}`;
-  } catch (error) {
-    activeUsers.textContent = "Unavailable";
-    costPerUser.textContent = "Unavailable";
-    console.warn("BinGo platform metrics are unavailable:", error);
-  }
+  activeUsers.textContent = "Not collected";
+  costPerUser.textContent = "Free hosting";
 }
 
 async function loadSurveySummary(element) {

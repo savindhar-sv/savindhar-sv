@@ -1,10 +1,11 @@
-const CACHE_NAME = "bingo-shell-v5";
+const CACHE_NAME = "bingo-shell-v6";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./supabase-client.js",
+  "./supabase-config.js",
   "./manifest.json",
   "./icon.svg"
 ];
@@ -31,11 +32,6 @@ self.addEventListener("fetch", event => {
   const { request } = event;
   const requestUrl = new URL(request.url);
   if (request.method !== "GET" || requestUrl.origin !== self.location.origin) {
-    return;
-  }
-
-  if (requestUrl.pathname.startsWith("/api/")) {
-    event.respondWith(fetch(request, { cache: "no-store" }));
     return;
   }
 
