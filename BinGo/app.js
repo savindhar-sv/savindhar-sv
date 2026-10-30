@@ -9,7 +9,7 @@ const pointsKey = "bingo-eco-points";
 const startingPoints = 1240;
 const truckStatusCopy = document.querySelector(".truck-status-copy");
 const shareGpsButton = document.getElementById("share-gps-button");
-const mapCenter = { latitude: 11.0140672, longitude: 76.9683931 };
+const mapCenter = { latitude: 11.0030, longitude: 76.9582 };
 const neighborhoodCenters = {
   "RS Puram": { latitude: 11.010, longitude: 76.950 },
   Gandhipuram: { latitude: 11.0183, longitude: 76.9678 },
@@ -123,6 +123,18 @@ const tamilTranslations = {
   "Call facility": "மையத்தை அழை",
   "No verified public pickup points are configured.": "சரிபார்க்கப்பட்ட பொது ஒப்படைப்பு இடங்கள் அமைக்கப்படவில்லை.",
   "Messages are encrypted on this device. Meet in a public place and avoid sharing home addresses or personal contact details.": "செய்திகள் இந்தச் சாதனத்தில் குறியாக்கம் செய்யப்படுகின்றன. பொது இடத்தில் சந்திக்கவும்; வீட்டு முகவரி அல்லது தனிப்பட்ட தொடர்பு விவரங்களைப் பகிர வேண்டாம்.",
+  "Open in OpenStreetMap": "OpenStreetMap-இல் திற",
+  "Open in OpenStreetMap ↗": "OpenStreetMap-இல் திற ↗",
+  "OpenStreetMap ↗": "OpenStreetMap ↗",
+  "Open in Google Maps": "Google Maps-இல் திற",
+  "Open in Google Maps ↗": "Google Maps-இல் திற ↗",
+  "Google Maps": "Google Maps",
+  "Google Maps ↗": "Google Maps ↗",
+  "Open map": "வரைபடத்தைத் திற",
+  "Open location": "இடத்தைத் திற",
+  "View on map ↗": "வரைபடத்தில் காண்க ↗",
+  "Open truck map in OpenStreetMap": "டிரக் வரைபடத்தை OpenStreetMap-இல் திற",
+  "Open truck map in Google Maps": "டிரக் வரைபடத்தை Google Maps-இல் திற",
   "Mark exchange complete": "பரிமாற்றம் முடிந்தது எனக் குறி"
 };
 const englishTranslations = Object.fromEntries(
@@ -321,12 +333,40 @@ const nearbyPlaces = [
   }
 ];
 
+function addLocationProviderLinks(container, latitude, longitude) {
+  const links = document.createElement("p");
+  links.className = "map-provider-popup-links";
+  [
+    ["OpenStreetMap", openStreetMapLocationUrl(latitude, longitude)],
+    ["Google Maps", googleMapsLocationUrl(latitude, longitude)]
+  ].forEach(([label, url]) => {
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = label;
+    links.append(link);
+  });
+  container.append(links);
+}
+
 function updateTruckMarkers(truck) {
   const hasValidLocation = truck
     && Number.isFinite(truck.longitude)
     && Number.isFinite(truck.latitude)
     && Math.abs(truck.longitude) <= 180
     && Math.abs(truck.latitude) <= 90;
+
+  const latitude = hasValidLocation ? truck.latitude : mapCenter.latitude;
+  const longitude = hasValidLocation ? truck.longitude : mapCenter.longitude;
+  const openStreetMapLink = document.querySelector("#truck-open-osm");
+  const googleMapsLink = document.querySelector("#truck-open-google-maps");
+  if (openStreetMapLink) {
+    openStreetMapLink.href = openStreetMapLocationUrl(latitude, longitude, 12);
+  }
+  if (googleMapsLink) {
+    googleMapsLink.href = googleMapsLocationUrl(latitude, longitude);
+  }
 
   liveTruckMarkers.forEach(({ marker, added }, index) => {
     if (!hasValidLocation) {
@@ -385,6 +425,7 @@ async function refreshDumpingReportMarkers() {
           const description = document.createElement("p");
           description.textContent = "Community reported · unverified · location rounded to protect privacy";
           details.append(heading, description);
+          addLocationProviderLinks(details, report.latitude, report.longitude);
           new maplibregl.Popup({ offset: 22 })
             .setLngLat([report.longitude, report.latitude])
             .setDOMContent(details)
@@ -437,6 +478,7 @@ async function loadVerifiedDropoffs() {
         source.rel = "noopener noreferrer";
         source.textContent = "Verification source";
         details.append(heading, description, source);
+        addLocationProviderLinks(details, dropoff.latitude, dropoff.longitude);
         element.addEventListener("click", event => {
           event.stopPropagation();
           new maplibregl.Popup({ offset: 22 })
@@ -470,9 +512,26 @@ async function initialiseMaps() {
     containers.forEach(container => {
       const map = new maplibregl.Map({
         container,
-        style: "https://demotiles.maplibre.org/style.json",
+        style: {
+          version: 8,
+          sources: {
+            openstreetmap: {
+              type: "raster",
+              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+              tileSize: 256,
+              maxzoom: 19,
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+            }
+          },
+          layers: [{
+            id: "openstreetmap",
+            type: "raster",
+            source: "openstreetmap"
+          }]
+        },
         center: [mapCenter.longitude, mapCenter.latitude],
-        zoom: mapZoom
+        zoom: mapZoom,
+        attributionControl: true
       });
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
       map.on("load", () => map.resize());
@@ -492,6 +551,14 @@ async function initialiseMaps() {
             latitude: event.lngLat.lat,
             longitude: event.lngLat.lng
           };
+          const osmLink = document.querySelector("#report-open-osm");
+          const googleLink = document.querySelector("#report-open-google-maps");
+          if (osmLink) {
+            osmLink.href = openStreetMapLocationUrl(selectedReportLocation.latitude, selectedReportLocation.longitude);
+          }
+          if (googleLink) {
+            googleLink.href = googleMapsLocationUrl(selectedReportLocation.latitude, selectedReportLocation.longitude);
+          }
           if (!reportLocationMarker) {
             const element = document.createElement("div");
             element.className = "report-location-marker";
@@ -524,6 +591,7 @@ async function initialiseMaps() {
             const description = document.createElement("p");
             description.textContent = place.address;
             details.append(heading, description);
+            addLocationProviderLinks(details, place.latitude, place.longitude);
             new maplibregl.Popup({ offset: 22 })
               .setLngLat([place.longitude, place.latitude])
               .setDOMContent(details)
@@ -596,17 +664,81 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 function nearbySearchUrl(place) {
+  if (!place.searchOnly && Number.isFinite(place.latitude) && Number.isFinite(place.longitude)) {
+    return openStreetMapLocationUrl(place.latitude, place.longitude);
+  }
+  const query = place.searchOnly
+    ? `${place.name} ${place.kind} near Coimbatore, Tamil Nadu`
+    : `${place.name}, ${place.address}`;
+  return `https://www.openstreetmap.org/search?query=${encodeURIComponent(query)}`;
+}
+
+function googleMapsSearchUrl(place) {
+  if (!place.searchOnly && Number.isFinite(place.latitude) && Number.isFinite(place.longitude)) {
+    return googleMapsLocationUrl(place.latitude, place.longitude);
+  }
   const query = place.searchOnly
     ? `${place.name} ${place.kind} near Coimbatore, Tamil Nadu`
     : `${place.name}, ${place.address}`;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
-function nearbyDirectionsUrl(place) {
-  if (place.searchOnly) {
-    return "";
+function openStreetMapLocationUrl(latitude, longitude, zoom = 16) {
+  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=${zoom}/${latitude}/${longitude}`;
+}
+
+function googleMapsLocationUrl(latitude, longitude) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${latitude},${longitude}`)}`;
+}
+
+function addGoogleMapsShortcuts() {
+  const truckOsmLink = document.querySelector(".map-footer .map-open-link");
+  if (truckOsmLink) {
+    truckOsmLink.id = "truck-open-osm";
+    truckOsmLink.setAttribute("aria-label", "Open truck map in OpenStreetMap");
+    const googleLink = document.createElement("a");
+    googleLink.id = "truck-open-google-maps";
+    googleLink.className = "arrow-button map-open-link map-provider-link";
+    googleLink.href = googleMapsLocationUrl(mapCenter.latitude, mapCenter.longitude);
+    googleLink.target = "_blank";
+    googleLink.rel = "noopener noreferrer";
+    googleLink.textContent = "G";
+    googleLink.setAttribute("aria-label", "Open truck map in Google Maps");
+    truckOsmLink.after(googleLink);
   }
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${place.name}, ${place.address}`)}&travelmode=driving`;
+
+  const exploreOsmLink = document.querySelector(".map-external-link");
+  if (exploreOsmLink) {
+    const googleLink = document.createElement("a");
+    googleLink.className = "filter-button map-external-link map-provider-link";
+    googleLink.href = googleMapsLocationUrl(mapCenter.latitude, mapCenter.longitude);
+    googleLink.target = "_blank";
+    googleLink.rel = "noopener noreferrer";
+    googleLink.textContent = "Open in Google Maps ↗";
+    exploreOsmLink.after(googleLink);
+  }
+
+  const reportMap = document.querySelector(".report-map-frame");
+  if (reportMap) {
+    const links = document.createElement("div");
+    links.className = "map-provider-links";
+    const osmLink = document.createElement("a");
+    osmLink.id = "report-open-osm";
+    osmLink.className = "secondary-button";
+    osmLink.href = openStreetMapLocationUrl(mapCenter.latitude, mapCenter.longitude);
+    osmLink.target = "_blank";
+    osmLink.rel = "noopener noreferrer";
+    osmLink.textContent = "Open in OpenStreetMap";
+    const googleLink = document.createElement("a");
+    googleLink.id = "report-open-google-maps";
+    googleLink.className = "secondary-button";
+    googleLink.href = googleMapsLocationUrl(mapCenter.latitude, mapCenter.longitude);
+    googleLink.target = "_blank";
+    googleLink.rel = "noopener noreferrer";
+    googleLink.textContent = "Open in Google Maps";
+    links.append(osmLink, googleLink);
+    reportMap.after(links);
+  }
 }
 
 function renderNearbyPlaces(category = "all") {
@@ -675,19 +807,16 @@ function renderNearbyPlaces(category = "all") {
     mapLink.href = nearbySearchUrl(place);
     mapLink.target = "_blank";
     mapLink.rel = "noopener noreferrer";
-    mapLink.textContent = "View on map ↗";
+    mapLink.textContent = "OpenStreetMap ↗";
     actions.append(mapLink);
 
-    const directionsUrl = nearbyDirectionsUrl(place);
-    if (directionsUrl) {
-      const directions = document.createElement("a");
-      directions.className = "primary-button";
-      directions.href = directionsUrl;
-      directions.target = "_blank";
-      directions.rel = "noopener noreferrer";
-      directions.textContent = "Directions";
-      actions.append(directions);
-    }
+    const googleMapsLink = document.createElement("a");
+    googleMapsLink.className = "secondary-button";
+    googleMapsLink.href = googleMapsSearchUrl(place);
+    googleMapsLink.target = "_blank";
+    googleMapsLink.rel = "noopener noreferrer";
+    googleMapsLink.textContent = "Google Maps ↗";
+    actions.append(googleMapsLink);
 
     if (place.category === "ngo") {
       const joinLink = document.createElement("a");
@@ -1912,11 +2041,17 @@ async function openConversation(exchangeId, itemTitle) {
       });
       const directions = document.createElement("a");
       directions.className = "secondary-button";
-      directions.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${facility.latitude},${facility.longitude}`)}`;
+      directions.href = openStreetMapLocationUrl(facility.latitude, facility.longitude);
       directions.target = "_blank";
       directions.rel = "noopener noreferrer";
-      directions.textContent = "Open directions";
-      actions.append(suggest, directions);
+      directions.textContent = "Open map";
+      const googleMapsLink = document.createElement("a");
+      googleMapsLink.className = "secondary-button";
+      googleMapsLink.href = googleMapsLocationUrl(facility.latitude, facility.longitude);
+      googleMapsLink.target = "_blank";
+      googleMapsLink.rel = "noopener noreferrer";
+      googleMapsLink.textContent = "Google Maps";
+      actions.append(suggest, directions, googleMapsLink);
       if (facility.phone) {
         const call = document.createElement("a");
         call.className = "primary-button";
@@ -2292,6 +2427,10 @@ document.querySelector(".submit-report").addEventListener("click", () => {
       reportLocationMarker?.remove();
       document.querySelector("#report-location-status").textContent =
         "Tap the map to place another pin. The saved position is rounded for privacy.";
+      document.querySelector("#report-open-osm").href =
+        openStreetMapLocationUrl(mapCenter.latitude, mapCenter.longitude);
+      document.querySelector("#report-open-google-maps").href =
+        googleMapsLocationUrl(mapCenter.latitude, mapCenter.longitude);
       updatePoints(50);
       notify("Report submitted as an unverified community hotspot. +50 points");
       await refreshDumpingReportMarkers();
@@ -2400,6 +2539,7 @@ window.addEventListener("appinstalled", () => {
   notify("BinGo installed successfully!");
 });
 
+addGoogleMapsShortcuts();
 initialiseNearbyDirectory();
 refreshTruckLocations();
 loadCollectionSchedule();

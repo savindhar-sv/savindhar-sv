@@ -1091,3 +1091,23 @@ a {
     grid-column: auto;
   }
 }
+
+.map-provider-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.map-provider-links a {
+  text-decoration: none;
+}
+
+.map-provider-link {
+  white-space: nowrap;
+}
+
+.map-provider-popup-links {
+  display: flex;
+  gap: 12px;
+}
