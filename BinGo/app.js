@@ -214,7 +214,7 @@ new MutationObserver(() => {
     translationQueued = false;
     translateInterface();
   });
-}).observe(document.body, { childList: true, subtree: true, characterData: true });
+}).observe(document.body, { childList: true, subtree: true });
 let localEncryptionKey = null;
 let selectedReportLocation = null;
 let truckAlertWatch = null;
