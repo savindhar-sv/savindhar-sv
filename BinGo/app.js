@@ -206,15 +206,6 @@ document.querySelector("#language-toggle").addEventListener("click", () => {
   translateInterface();
 });
 translateInterface();
-let translationQueued = false;
-new MutationObserver(() => {
-  if (translationQueued) return;
-  translationQueued = true;
-  queueMicrotask(() => {
-    translationQueued = false;
-    translateInterface();
-  });
-}).observe(document.body, { childList: true, subtree: true });
 let localEncryptionKey = null;
 let selectedReportLocation = null;
 let truckAlertWatch = null;
