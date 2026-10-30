@@ -4,13 +4,13 @@ const TABLE_NAME = 'listings';
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Set SUPABASE_URL and SUPABASE_ANON_KEY before using Supabase.');
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY before using Supabase.');
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey);
+  return createClient(supabaseUrl, supabaseKey);
 }
 
 async function getAvailableListings() {
